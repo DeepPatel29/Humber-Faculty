@@ -56,7 +56,7 @@ export default function FacultyLayout({
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -70,12 +70,12 @@ export default function FacultyLayout({
       : "Good Evening";
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-border bg-card">
         {/* Logo */}
         <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
             <GraduationCap className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -93,7 +93,7 @@ export default function FacultyLayout({
               ) : isScheduler ? (
                 <Eye className="h-4 w-4 text-green-500" />
               ) : (
-                <User className="h-4 w-4 text-blue-500" />
+                <User className="h-4 w-4 text-primary" />
               )}
               <div>
                 <p className="text-xs font-semibold">
@@ -105,7 +105,7 @@ export default function FacultyLayout({
                       ? "text-purple-500"
                       : isScheduler
                       ? "text-green-500"
-                      : "text-blue-500"
+                      : "text-primary"
                   }`}
                 >
                   {roleInfo.label}
@@ -147,10 +147,10 @@ export default function FacultyLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                   active
-                    ? "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-primary/10 font-semibold text-primary dark:bg-primary/15"
+                    : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
                 <item.icon className="h-5 w-5" />
@@ -206,7 +206,7 @@ export default function FacultyLayout({
                 </span>
               )}
             </Link>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm font-bold">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary text-sm font-bold">
               {getInitials(user?.name || "")}
             </div>
           </div>
