@@ -1,0 +1,58 @@
+### FacultyHub — Faculty API manual tests (VS Code REST Client / compatible)
+###
+### Prerequisites
+### - Dev server: npm run dev
+### - DATABASE_URL set; run: npx prisma db push && npm run db:seed
+### - Better Auth: sign in (e.g. via /login) and paste the session cookie below, OR
+### - Local mock cookie tests: set in .env  ALLOW_MOCK_AUTH=true  then POST /api/auth/mock-login
+###
+### Replace {{baseUrl}} and {{cookie}} before running.
+
+@baseUrl = http://localhost:3000
+@cookie = better-auth.session_token=PASTE_TOKEN_HERE
+
+### --- Valid: canonical GET /api/faculty (directory, all authenticated roles) ---
+GET {{baseUrl}}/api/faculty?page=1&limit=5
+Cookie: {{cookie}}
+
+### --- Valid: GET /api/faculty/:id ---
+# @name facultyId
+GET {{baseUrl}}/api/faculty
+Cookie: {{cookie}}
+
+### (Copy an id from the list response, then:)
+# GET {{baseUrl}}/api/faculty/YOUR-FACULTY-UUID
+# Cookie: {{cookie}}
+
+### --- Invalid: malformed query (validation 400) ---
+GET {{baseUrl}}/api/faculty?page=not-a-number
+Cookie: {{cookie}}
+
+### --- Unauthorized: no cookie ---
+GET {{baseUrl}}/api/faculty
+
+### --- Forbidden: student on faculty portal route (after logging in as student@...) ---
+# GET {{baseUrl}}/api/faculty/dashboard
+# Cookie: {{cookie}}
+
+### --- Not found: faculty request detail ---
+GET {{baseUrl}}/api/faculty/requests/00000000-0000-0000-0000-000000000000
+Cookie: {{cookie}}
+
+### --- Mock login (only if ALLOW_MOCK_AUTH=true) — staff ---
+POST {{baseUrl}}/api/auth/mock-login
+Content-Type: application/json
+
+{
+  "email": "faculty@university.edu",
+  "password": "password123"
+}
+
+### --- Mock login — student (directory only) ---
+POST {{baseUrl}}/api/auth/mock-login
+Content-Type: application/json
+
+{
+  "email": "student@university.edu",
+  "password": "password123"
+}
