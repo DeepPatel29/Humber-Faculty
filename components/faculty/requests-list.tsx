@@ -96,7 +96,9 @@ export function RequestsList({ requests, onView, onWithdraw }: RequestsListProps
                       <h3 className="font-medium text-foreground">{request.title || "Untitled Request"}</h3>
                       <p className="mt-0.5 text-sm text-muted-foreground">
                         {typeLabels[request.type] || request.type} &bull;{" "}
-                        {safeTimeAgo(request.createdAt)}
+                        {safeTimeAgo(
+                          (request as { requestDate?: string | Date }).requestDate ?? request.createdAt
+                        )}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">

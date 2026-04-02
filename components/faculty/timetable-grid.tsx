@@ -41,7 +41,7 @@ const timeSlots = [
 ];
 
 const typeColors: Record<ScheduleItemType, string> = {
-  [ScheduleItemType.LECTURE]: "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300",
+  [ScheduleItemType.LECTURE]: "border-primary/30 bg-primary/10 text-primary",
   [ScheduleItemType.LAB]: "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-300",
   [ScheduleItemType.TUTORIAL]: "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300",
   [ScheduleItemType.SEMINAR]: "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300",

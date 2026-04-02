@@ -144,7 +144,7 @@ export default function AdminRequestsPage() {
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 dark:bg-primary/20">
                         {getTypeIcon(request.type)}
                       </div>
                       <div>

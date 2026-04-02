@@ -3,6 +3,7 @@ import type {
   FacultyProfile,
   FacultyScheduleItem,
   FacultyRequest,
+  FacultyRequestDetail,
   FacultyNotification,
   FacultyAvailability,
   ClassOption,
@@ -60,10 +61,18 @@ async function fetchApi<T>(
     const json = await res.json();
 
     if (!res.ok) {
+      const details = json?.error?.details as Record<string, string[]> | undefined;
+      const detailMessage = details
+        ? Object.entries(details)
+            .flatMap(([field, messages]) =>
+              messages.map((msg) => (field === "_root" ? msg : `${field}: ${msg}`))
+            )
+            .join(" | ")
+        : "";
       const errMsg =
         typeof json.error === "string"
           ? json.error
-          : json.error?.message || `Request failed with status ${res.status}`;
+          : detailMessage || json.error?.message || `Request failed with status ${res.status}`;
       return {
         success: false,
         error: errMsg,
@@ -95,8 +104,10 @@ export async function getProfile(): Promise<ApiResponse<{ faculty: Faculty; prof
   return fetchApi("/api/faculty/profile");
 }
 
-export async function updateProfile(data: UpdateProfileInput): Promise<ApiResponse<FacultyProfile>> {
-  return fetchApi<FacultyProfile>("/api/faculty/profile", {
+export async function updateProfile(
+  data: UpdateProfileInput
+): Promise<ApiResponse<{ faculty: Faculty; profile: FacultyProfile }>> {
+  return fetchApi<{ faculty: Faculty; profile: FacultyProfile }>("/api/faculty/profile", {
     method: "PUT",
     body: JSON.stringify(data),
   });
@@ -245,8 +256,8 @@ export async function getRequests(params?: RequestsParams): Promise<PaginatedRes
   };
 }
 
-export async function getRequestById(id: string): Promise<ApiResponse<FacultyRequest>> {
-  return fetchApi<FacultyRequest>(`/api/faculty/requests/${id}`);
+export async function getRequestById(id: string): Promise<ApiResponse<FacultyRequestDetail>> {
+  return fetchApi<FacultyRequestDetail>(`/api/faculty/requests/${id}`);
 }
 
 export async function createSwapRequest(data: CreateSwapRequestInput): Promise<ApiResponse<FacultyRequest>> {
@@ -381,4 +392,30 @@ export async function getColleagueOptions(): Promise<ApiResponse<ColleagueOption
       : [];
 
   return { success: true, data: colleagues };
+}
+
+interface DepartmentOption {
+  id: string;
+  name: string;
+  code: string;
+}
+
+interface DepartmentOptionsApiResponse {
+  departments: DepartmentOption[];
+}
+
+export async function getDepartmentOptions(): Promise<ApiResponse<DepartmentOption[]>> {
+  const res = await fetchApi<DepartmentOptionsApiResponse>("/api/faculty/departments/options");
+
+  if (!res.success || !res.data) {
+    return { success: false, error: res.error || "Failed to fetch department options" };
+  }
+
+  const departments = Array.isArray(res.data.departments)
+    ? res.data.departments
+    : Array.isArray(res.data)
+      ? (res.data as DepartmentOption[])
+      : [];
+
+  return { success: true, data: departments };
 }

@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useProfile, useUpdateProfile } from "@/hooks/use-faculty";
+import { useDepartmentOptions, useProfile, useUpdateProfile } from "@/hooks/use-faculty";
 import { useRoleAuth } from "@/hooks/use-role-auth";
 import { ReadOnlyBanner } from "@/components/role-gate";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInitials } from "@/lib/utils";
 import {
@@ -23,7 +22,6 @@ import {
   Github,
   Plus,
   X,
-  Briefcase,
   Calendar,
   Building2,
   Hash,
@@ -31,14 +29,38 @@ import {
   Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { UpdateProfileInput } from "@/lib/validations/faculty";
+
+interface ProfileFormState {
+  fullName: string;
+  email: string;
+  departmentId: string;
+  designation: string;
+  bio: string;
+  phone: string;
+  officeLocation: string;
+  officeHours: string;
+  researchInterests: string[];
+  qualifications: string[];
+  publications: string[];
+  linkedin: string;
+  github: string;
+  scholar: string;
+  website: string;
+}
 
 export default function ProfilePage() {
   const { data: profile, isLoading, mutate } = useProfile();
+  const { data: departments = [] } = useDepartmentOptions();
   const { trigger: updateProfile, isMutating } = useUpdateProfile();
   const { can, isScheduler, user } = useRoleAuth();
   const canEdit = can("profile:edit:own");
 
   const [isEditing, setIsEditing] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
+  const [designation, setDesignation] = useState("");
   const [bio, setBio] = useState("");
   const [phone, setPhone] = useState("");
   const [officeLocation, setOfficeLocation] = useState("");
@@ -53,63 +75,104 @@ export default function ProfilePage() {
   const [newInterest, setNewInterest] = useState("");
   const [newQualification, setNewQualification] = useState("");
   const [newPublication, setNewPublication] = useState("");
+  const [initialProfileState, setInitialProfileState] = useState<ProfileFormState | null>(null);
+
+  function toProfileState(): ProfileFormState {
+    const faculty = profile?.faculty;
+    const prof = profile?.profile;
+    const links = prof?.socialLinks ?? {};
+
+    return {
+      fullName: faculty?.user?.name ?? user?.name ?? "",
+      email: faculty?.user?.email ?? user?.email ?? "",
+      departmentId: faculty?.departmentId ?? "",
+      designation: faculty?.designation ?? "",
+      bio: prof?.bio ?? "",
+      phone: prof?.phone ?? "",
+      officeLocation: prof?.officeLocation ?? "",
+      officeHours: prof?.officeHours ?? "",
+      researchInterests: prof?.researchInterests ?? [],
+      qualifications: prof?.qualifications ?? [],
+      publications: prof?.publications ?? [],
+      linkedin: links.linkedin ?? "",
+      github: links.github ?? "",
+      scholar: links.scholar ?? links.googleScholar ?? "",
+      website: links.website ?? "",
+    };
+  }
+
+  function applyState(state: ProfileFormState) {
+    setFullName(state.fullName);
+    setEmail(state.email);
+    setDepartmentId(state.departmentId);
+    setDesignation(state.designation);
+    setBio(state.bio);
+    setPhone(state.phone);
+    setOfficeLocation(state.officeLocation);
+    setOfficeHours(state.officeHours);
+    setResearchInterests(state.researchInterests);
+    setQualifications(state.qualifications);
+    setPublications(state.publications);
+    setLinkedin(state.linkedin);
+    setGithub(state.github);
+    setScholar(state.scholar);
+    setWebsite(state.website);
+  }
 
   useEffect(() => {
-    if (profile) {
-      const d = profile as any;
-      const prof = d.profile || d;
-      setBio(prof.bio || "");
-      setPhone(prof.phone || "");
-      setOfficeLocation(prof.officeLocation || prof.office_location || "");
-      setOfficeHours(prof.officeHours || prof.office_hours || "");
-      setResearchInterests(prof.researchInterests || prof.research_interests || []);
-      setQualifications(prof.qualifications || []);
-      setPublications(prof.publications || []);
-      const links = prof.socialLinks || prof.social_links || {};
-      setLinkedin(links.linkedin || "");
-      setGithub(links.github || "");
-      setScholar(links.scholar || links.googleScholar || "");
-      setWebsite(links.website || "");
-    }
+    if (!profile) return;
+    const nextState = toProfileState();
+    setInitialProfileState(nextState);
+    applyState(nextState);
   }, [profile]);
 
   async function handleSave() {
+    const normalizedResearchInterests = researchInterests
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const normalizedQualifications = qualifications
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const normalizedPublications = publications
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    const socialLinks = {
+      ...(linkedin.trim() ? { linkedin: linkedin.trim() } : {}),
+      ...(github.trim() ? { github: github.trim() } : {}),
+      ...(scholar.trim() ? { scholar: scholar.trim() } : {}),
+      ...(website.trim() ? { website: website.trim() } : {}),
+    };
+
     try {
-      await updateProfile({
+      const payload: Partial<UpdateProfileInput> = {
         bio,
-        phone,
+        phone: phone.trim() ? phone.trim() : null,
         officeLocation,
         officeHours,
-        researchInterests,
-        qualifications,
-        publications,
-        socialLinks: { linkedin, github, scholar, website },
-      } as any);
+        researchInterests: normalizedResearchInterests,
+        qualifications: normalizedQualifications,
+        publications: normalizedPublications,
+        socialLinks,
+      };
+
+      if (fullName.trim()) payload.fullName = fullName.trim();
+      if (email.trim()) payload.email = email.trim();
+      if (designation.trim()) payload.designation = designation.trim();
+      if (departmentId) payload.departmentId = departmentId;
+
+      await updateProfile(payload as UpdateProfileInput);
       toast.success("Profile updated successfully");
       setIsEditing(false);
       mutate();
-    } catch {
-      toast.error("Failed to update profile");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update profile";
+      toast.error(message);
     }
   }
 
   function handleCancel() {
-    if (profile) {
-      const d = profile as any;
-      const prof = d.profile || d;
-      setBio(prof.bio || "");
-      setPhone(prof.phone || "");
-      setOfficeLocation(prof.officeLocation || "");
-      setOfficeHours(prof.officeHours || "");
-      setResearchInterests(prof.researchInterests || []);
-      setQualifications(prof.qualifications || []);
-      setPublications(prof.publications || []);
-      const links = prof.socialLinks || {};
-      setLinkedin(links.linkedin || "");
-      setGithub(links.github || "");
-      setScholar(links.scholar || "");
-      setWebsite(links.website || "");
-    }
+    if (initialProfileState) applyState(initialProfileState);
     setIsEditing(false);
   }
 
@@ -134,6 +197,26 @@ export default function ProfilePage() {
     setList(list.filter((_, i) => i !== idx));
   }
 
+  const hasUnsavedChanges = initialProfileState
+    ? JSON.stringify({
+        fullName,
+        email,
+        departmentId,
+        designation,
+        bio,
+        phone,
+        officeLocation,
+        officeHours,
+        researchInterests,
+        qualifications,
+        publications,
+        linkedin,
+        github,
+        scholar,
+        website,
+      }) !== JSON.stringify(initialProfileState)
+    : false;
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -144,16 +227,19 @@ export default function ProfilePage() {
     );
   }
 
-  const d = (profile || {}) as any;
-  const fac = d.faculty || {};
-  const facUser = fac.user || {};
-  const facDept = fac.department || {};
-  const name = facUser.name || user?.name || "Faculty Member";
-  const email = facUser.email || user?.email || "";
-  const designation = fac.designation || "Professor";
-  const department = facDept.name || "Department";
-  const employeeId = fac.employeeId || fac.employee_id || "N/A";
-  const joiningDate = fac.joiningDate || fac.joining_date || "";
+  const fac = profile?.faculty;
+  const facUser = fac?.user;
+  const facDept = fac?.department;
+  const name = fullName || facUser?.name || user?.name || "Faculty Member";
+  const currentEmail = email || facUser?.email || user?.email || "";
+  const currentDesignation = designation || fac?.designation || "Professor";
+  const departmentName =
+    departments.find((d) => d.id === departmentId)?.name ||
+    facDept?.name ||
+    "Department";
+  const employeeId = fac?.employeeId || "N/A";
+  const joiningDate = fac?.joiningDate || "";
+  const role = facUser?.role || user?.role || "STAFF";
 
   return (
     <div className="space-y-6">
@@ -182,15 +268,36 @@ export default function ProfilePage() {
       {/* Hero Card */}
       <Card>
         <CardContent className="p-0">
-          <div className="h-32 rounded-t-xl bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600" />
+          <div className="h-32 rounded-t-xl bg-gradient-to-r from-primary via-cyan-500 to-teal-600" />
           <div className="px-6 pb-6">
             <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-12">
-              <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-card bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-3xl font-bold shadow-lg shrink-0">
+              <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-card bg-primary/15 text-primary text-3xl font-bold shadow-lg shrink-0">
                 {getInitials(name)}
               </div>
               <div className="flex-1 sm:pb-1">
-                <h2 className="text-xl font-bold">{name}</h2>
-                <p className="text-sm text-muted-foreground">{designation}</p>
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Full name"
+                      className="w-full rounded border border-border bg-transparent px-2 py-1 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Email"
+                      className="w-full rounded border border-border bg-transparent px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="text-xl font-bold">{name}</h2>
+                    <p className="text-sm text-muted-foreground">{currentDesignation}</p>
+                  </>
+                )}
               </div>
               <div className="flex gap-6 sm:pb-1">
                 <div className="text-center">
@@ -209,10 +316,10 @@ export default function ProfilePage() {
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                <Building2 className="h-3 w-3" /> {department}
+                <Building2 className="h-3 w-3" /> {departmentName}
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                <Mail className="h-3 w-3" /> {email}
+                <Mail className="h-3 w-3" /> {currentEmail}
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
                 <Hash className="h-3 w-3" /> {employeeId}
@@ -248,7 +355,7 @@ export default function ProfilePage() {
                     onChange={(e) => setBio(e.target.value)}
                     rows={5}
                     placeholder="Write about yourself..."
-                    className="w-full rounded-lg border border-border bg-transparent px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full rounded-lg border border-border bg-transparent px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                   />
                   <p className="mt-1.5 text-xs text-muted-foreground text-right">
                     {bio.length}/1000
@@ -282,7 +389,7 @@ export default function ProfilePage() {
                 {researchInterests.map((item, i) => (
                   <span
                     key={i}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary dark:bg-primary/15"
                   >
                     {item}
                     {isEditing && (
@@ -318,7 +425,7 @@ export default function ProfilePage() {
                         );
                       }
                     }}
-                    className="flex-1 rounded-lg border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 rounded-lg border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <button
                     type="button"
@@ -331,7 +438,7 @@ export default function ProfilePage() {
                         20
                       )
                     }
-                    className="rounded-lg bg-blue-600 px-3 py-2 text-white hover:bg-blue-500 transition-colors"
+                    className="rounded-lg bg-primary px-3 py-2 text-primary-foreground hover:bg-primary/90 transition-colors"
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -362,8 +469,8 @@ export default function ProfilePage() {
                     key={i}
                     className="group flex items-center gap-3 rounded-lg border border-border p-3 hover:bg-muted/30 transition-colors"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950 shrink-0">
-                      <GraduationCap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0 dark:bg-primary/15">
+                      <GraduationCap className="h-4 w-4 text-primary" />
                     </div>
                     <span className="text-sm flex-1">{item}</span>
                     {isEditing && (
@@ -397,7 +504,7 @@ export default function ProfilePage() {
                         );
                       }
                     }}
-                    className="flex-1 rounded-lg border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 rounded-lg border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <button
                     type="button"
@@ -410,7 +517,7 @@ export default function ProfilePage() {
                         10
                       )
                     }
-                    className="rounded-lg bg-blue-600 px-3 py-2 text-white hover:bg-blue-500 transition-colors"
+                    className="rounded-lg bg-primary px-3 py-2 text-primary-foreground hover:bg-primary/90 transition-colors"
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -476,7 +583,7 @@ export default function ProfilePage() {
                         );
                       }
                     }}
-                    className="flex-1 rounded-lg border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 rounded-lg border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <button
                     type="button"
@@ -489,7 +596,7 @@ export default function ProfilePage() {
                         50
                       )
                     }
-                    className="rounded-lg bg-blue-600 px-3 py-2 text-white hover:bg-blue-500 transition-colors"
+                    className="rounded-lg bg-primary px-3 py-2 text-primary-foreground hover:bg-primary/90 transition-colors"
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -516,7 +623,17 @@ export default function ProfilePage() {
                     <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                       Email
                     </p>
-                    <p className="text-sm truncate">{email || "Not set"}</p>
+                    {isEditing ? (
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@university.edu"
+                        className="mt-1 w-full rounded border border-border bg-transparent px-2 py-1 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    ) : (
+                      <p className="text-sm truncate">{currentEmail || "Not set"}</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -533,7 +650,7 @@ export default function ProfilePage() {
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="+1-555-0123"
-                        className="mt-1 w-full rounded border border-border bg-transparent px-2 py-1 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="mt-1 w-full rounded border border-border bg-transparent px-2 py-1 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     ) : (
                       <p className="text-sm">{phone || "Not set"}</p>
@@ -554,7 +671,7 @@ export default function ProfilePage() {
                         value={officeLocation}
                         onChange={(e) => setOfficeLocation(e.target.value)}
                         placeholder="CS Block, Room 201"
-                        className="mt-1 w-full rounded border border-border bg-transparent px-2 py-1 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="mt-1 w-full rounded border border-border bg-transparent px-2 py-1 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     ) : (
                       <p className="text-sm">{officeLocation || "Not set"}</p>
@@ -575,7 +692,7 @@ export default function ProfilePage() {
                         value={officeHours}
                         onChange={(e) => setOfficeHours(e.target.value)}
                         placeholder="Mon & Fri 2-4 PM"
-                        className="mt-1 w-full rounded border border-border bg-transparent px-2 py-1 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="mt-1 w-full rounded border border-border bg-transparent px-2 py-1 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     ) : (
                       <p className="text-sm">{officeHours || "Not set"}</p>
@@ -633,7 +750,7 @@ export default function ProfilePage() {
                         value={link.value}
                         onChange={(e) => link.setter(e.target.value)}
                         placeholder={link.placeholder}
-                        className="w-full rounded border border-border bg-transparent px-2 py-1.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded border border-border bg-transparent px-2 py-1.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     </div>
                   ))}
@@ -699,13 +816,38 @@ export default function ProfilePage() {
                   <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                     Department
                   </p>
-                  <p className="text-sm font-medium">{department}</p>
+                  {isEditing ? (
+                    <select
+                      value={departmentId}
+                      onChange={(e) => setDepartmentId(e.target.value)}
+                      className="mt-1 w-full rounded border border-border bg-transparent px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="">Select department</option>
+                      {departments.map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {dept.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-sm font-medium">{departmentName}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                     Designation
                   </p>
-                  <p className="text-sm font-medium">{designation}</p>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={designation}
+                      onChange={(e) => setDesignation(e.target.value)}
+                      placeholder="Designation"
+                      className="mt-1 w-full rounded border border-border bg-transparent px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  ) : (
+                    <p className="text-sm font-medium">{currentDesignation}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
@@ -713,9 +855,15 @@ export default function ProfilePage() {
                   </p>
                   <p className="text-sm font-mono">{employeeId}</p>
                 </div>
+                <div>
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Role
+                  </p>
+                  <p className="text-sm font-medium">{role}</p>
+                </div>
               </div>
               <p className="mt-4 text-[11px] text-muted-foreground">
-                Contact your department admin to update these fields
+                Employee ID, joined date, and role are system-managed and read-only.
               </p>
             </CardContent>
           </Card>
@@ -726,7 +874,9 @@ export default function ProfilePage() {
       {isEditing && (
         <div className="sticky bottom-0 -mx-6 -mb-6 border-t border-border bg-card/95 backdrop-blur-sm px-6 py-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">You have unsaved changes</p>
+            <p className="text-sm text-muted-foreground">
+              {hasUnsavedChanges ? "You have unsaved changes" : "No unsaved changes"}
+            </p>
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -738,8 +888,8 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={isMutating}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:opacity-50 transition-colors"
+                disabled={isMutating || !hasUnsavedChanges}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {isMutating ? (
                   <>

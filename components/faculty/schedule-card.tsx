@@ -20,7 +20,7 @@ interface ScheduleCardProps {
 }
 
 const typeColors: Record<ScheduleItemType, string> = {
-  [ScheduleItemType.LECTURE]: "bg-blue-500",
+  [ScheduleItemType.LECTURE]: "bg-primary",
   [ScheduleItemType.LAB]: "bg-green-500",
   [ScheduleItemType.TUTORIAL]: "bg-amber-500",
   [ScheduleItemType.SEMINAR]: "bg-purple-500",

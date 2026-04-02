@@ -31,7 +31,7 @@ const typeVariant: Record<string, "info" | "success" | "warning" | "secondary"> 
 };
 
 const typeBorder: Record<string, string> = {
-  LECTURE: "border-l-blue-500",
+  LECTURE: "border-l-primary",
   LAB: "border-l-green-500",
   TUTORIAL: "border-l-purple-500",
   SEMINAR: "border-l-amber-500",
@@ -103,8 +103,8 @@ export default function DashboardPage() {
       value: classesThisWeek,
       icon: Calendar,
       sub: "vs last week",
-      iconBg: "bg-blue-50 dark:bg-blue-950",
-      iconColor: "text-blue-600 dark:text-blue-400",
+      iconBg: "bg-primary/10 dark:bg-primary/15",
+      iconColor: "text-primary",
     },
     {
       label: "Total Students",
@@ -197,7 +197,7 @@ export default function DashboardPage() {
             <CardTitle className="text-base font-semibold">Today&apos;s Schedule</CardTitle>
             <Link
               href="/faculty/timetable"
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
+              className="text-xs text-primary hover:underline flex items-center gap-0.5"
             >
               View All <ChevronRight className="h-3.5 w-3.5" />
             </Link>
@@ -262,7 +262,7 @@ export default function DashboardPage() {
             <CardTitle className="text-base font-semibold">Upcoming Classes</CardTitle>
             <Link
               href="/faculty/timetable"
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
+              className="text-xs text-primary hover:underline flex items-center gap-0.5"
             >
               View All <ChevronRight className="h-3.5 w-3.5" />
             </Link>
@@ -360,12 +360,12 @@ export default function DashboardPage() {
                     key={notif.id || idx}
                     className={`rounded-lg border p-3 ${
                       !isRead
-                        ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900"
+                        ? "border-primary/20 bg-primary/5 dark:bg-primary/10"
                         : ""
                     }`}
                   >
                     <div className="flex items-start gap-2">
-                      {!isRead && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />}
+                      {!isRead && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{title}</p>
                         <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{message}</p>
