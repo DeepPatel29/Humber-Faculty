@@ -224,6 +224,62 @@ export interface FacultyRequestTimeline {
   createdAt: Date;
 }
 
+/** Response shape from GET /api/faculty/requests/[id] (ISO date strings from JSON) */
+export interface FacultyRequestScheduleSummary {
+  id: string;
+  courseCode: string;
+  courseName: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  roomLabel: string;
+  ownerName: string | null;
+}
+
+export interface FacultyRequestDetail {
+  id: string;
+  facultyId: string;
+  type: string;
+  status: string;
+  title: string;
+  description: string | null;
+  requestDate: string;
+  effectiveDate: string;
+  endDate: string | null;
+  reason: string;
+  targetFacultyId: string | null;
+  targetScheduleId: string | null;
+  newDate: string | null;
+  newStartTime: string | null;
+  newEndTime: string | null;
+  createdAt: string;
+  updatedAt: string;
+  timeline: Array<{
+    id: string;
+    requestId: string;
+    status: string;
+    comment: string | null;
+    createdBy: string;
+    createdAt: string;
+  }>;
+  faculty: {
+    id: string;
+    name: string;
+    email: string;
+    designation: string;
+    employeeId: string;
+    departmentName: string;
+  };
+  targetFaculty: {
+    id: string;
+    name: string;
+    email: string;
+    designation: string;
+  } | null;
+  targetSchedule: FacultyRequestScheduleSummary | null;
+  mySchedule: FacultyRequestScheduleSummary | null;
+}
+
 export interface FacultyNotification {
   id: string;
   facultyId: string;

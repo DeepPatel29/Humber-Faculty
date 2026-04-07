@@ -25,6 +25,9 @@ export const uuidSchema = z.string().uuid("Invalid UUID format");
 // ============================================================================
 
 export const updateProfileSchema = z.object({
+  fullName: z.string().min(1).max(200).optional(),
+  email: z.string().email("Invalid email address").optional(),
+  departmentId: uuidSchema.optional(),
   bio: z.string().max(1000, "Bio must be 1000 characters or less").nullable().optional(),
   phone: z
     .string()

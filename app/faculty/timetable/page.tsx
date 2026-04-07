@@ -47,7 +47,7 @@ const MONTH_NAMES = [
 ];
 
 const typeBorder: Record<string, string> = {
-  LECTURE: "border-l-blue-500 bg-blue-50/70 dark:bg-blue-950/30",
+  LECTURE: "border-l-primary bg-primary/10 dark:bg-primary/15",
   LAB: "border-l-green-500 bg-green-50/70 dark:bg-green-950/30",
   TUTORIAL: "border-l-purple-500 bg-purple-50/70 dark:bg-purple-950/30",
   SEMINAR: "border-l-amber-500 bg-amber-50/70 dark:bg-amber-950/30",
@@ -55,7 +55,7 @@ const typeBorder: Record<string, string> = {
 };
 
 const typeDot: Record<string, string> = {
-  LECTURE: "bg-blue-500",
+  LECTURE: "bg-primary",
   LAB: "bg-green-500",
   TUTORIAL: "bg-purple-500",
   SEMINAR: "bg-amber-500",
@@ -244,11 +244,11 @@ function MonthView({
                 <span
                   className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium ${
                     isToday
-                      ? "bg-blue-600 text-white"
+                      ? "bg-primary text-primary-foreground"
                       : !cell.isCurrentMonth
                       ? "text-muted-foreground/40"
                       : isWeekend
-                      ? "text-blue-500 dark:text-blue-400"
+                      ? "text-primary"
                       : "text-foreground"
                   }`}
                 >
@@ -295,13 +295,13 @@ function WeekView({
             <div
               key={day}
               className={`border-r border-b last:border-r-0 py-3 text-center bg-muted/30 ${
-                isToday ? "bg-blue-50 dark:bg-blue-950/30" : ""
+                isToday ? "bg-primary/10 dark:bg-primary/15" : ""
               }`}
             >
               <p className="text-xs text-muted-foreground">{day}</p>
               <p
                 className={`text-lg font-semibold mt-0.5 ${
-                  isToday ? "text-blue-600 dark:text-blue-400" : ""
+                  isToday ? "text-primary" : ""
                 }`}
               >
                 {date.getDate()}
@@ -332,7 +332,7 @@ function WeekView({
                 <div
                   key={`${hour}-${dayName}`}
                   className={`border-r border-b last:border-r-0 p-1 min-h-[60px] ${
-                    isToday ? "bg-blue-50/30 dark:bg-blue-950/10" : ""
+                    isToday ? "bg-primary/5 dark:bg-primary/10" : ""
                   }`}
                 >
                   {dayClasses.map((item: any, i: number) => (

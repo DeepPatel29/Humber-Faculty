@@ -25,7 +25,7 @@ const typeIcons: Record<string, React.ElementType> = {
 };
 
 const typeIconBg: Record<string, string> = {
-  REQUEST_UPDATE: "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400",
+  REQUEST_UPDATE: "bg-primary/15 text-primary dark:bg-primary/20",
   SCHEDULE_CHANGE: "bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400",
   ANNOUNCEMENT: "bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400",
   REMINDER: "bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400",
@@ -165,7 +165,7 @@ export default function NotificationsPage() {
                         key={notif.id || idx}
                         className={`transition-all ${
                           !isRead
-                            ? "border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/10"
+                            ? "border-primary/25 bg-primary/5 dark:bg-primary/10"
                             : ""
                         } hover:shadow-sm`}
                       >
@@ -178,7 +178,7 @@ export default function NotificationsPage() {
                               <div className="flex items-center gap-2">
                                 <h3 className="text-sm font-semibold">{title}</h3>
                                 {!isRead && (
-                                  <div className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+                                  <div className="h-2 w-2 shrink-0 rounded-full bg-primary" />
                                 )}
                               </div>
                               {message && (
@@ -193,7 +193,7 @@ export default function NotificationsPage() {
                                 {link && (
                                   <Link
                                     href={link}
-                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                                    className="text-xs text-primary hover:underline"
                                   >
                                     View details →
                                   </Link>

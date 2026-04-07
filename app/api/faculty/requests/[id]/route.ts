@@ -13,6 +13,47 @@ import {
 } from "@/lib/api-response";
 import { patchFacultyRequestByIdSchema } from "@/lib/validations/faculty";
 
+function parseMyScheduleIdFromDescription(description: string | null): string | null {
+  if (!description) return null;
+  const m = description.match(
+    /myScheduleId:\s*([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i
+  );
+  return m?.[1] ?? null;
+}
+
+function scheduleToSummary(
+  s: {
+    id: string;
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+    course: { code: string; name: string };
+    room: { building: string; name: string };
+    faculty: { user: { name: string } };
+  } | null
+): {
+  id: string;
+  courseCode: string;
+  courseName: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  roomLabel: string;
+  ownerName: string | null;
+} | null {
+  if (!s) return null;
+  return {
+    id: s.id,
+    courseCode: s.course.code,
+    courseName: s.course.name,
+    dayOfWeek: s.dayOfWeek,
+    startTime: s.startTime,
+    endTime: s.endTime,
+    roomLabel: `${s.room.building} ${s.room.name}`,
+    ownerName: s.faculty.user.name,
+  };
+}
+
 function serializeRequest(r: {
   id: string;
   facultyId: string;
@@ -29,6 +70,8 @@ function serializeRequest(r: {
   newDate: Date | null;
   newStartTime: string | null;
   newEndTime: string | null;
+  createdAt: Date;
+  updatedAt: Date;
   timeline: Array<{
     id: string;
     requestId: string;
@@ -54,6 +97,8 @@ function serializeRequest(r: {
     newDate: r.newDate?.toISOString() ?? null,
     newStartTime: r.newStartTime,
     newEndTime: r.newEndTime,
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
     timeline: r.timeline.map((t) => ({
       id: t.id,
       requestId: t.requestId,
@@ -82,7 +127,15 @@ export async function GET(
   try {
     const existing = await db.facultyRequest.findUnique({
       where: { id },
-      include: { timeline: { orderBy: { createdAt: "asc" } } },
+      include: {
+        timeline: { orderBy: { createdAt: "asc" } },
+        faculty: {
+          include: {
+            user: { select: { id: true, name: true, email: true } },
+            department: { select: { name: true } },
+          },
+        },
+      },
     });
 
     if (!existing) {
@@ -105,7 +158,57 @@ export async function GET(
       return forbiddenResponse("You cannot access this request");
     }
 
-    return successResponse(serializeRequest(existing));
+    const scheduleInclude = {
+      course: true,
+      room: true,
+      faculty: { include: { user: { select: { name: true } } } },
+    } as const;
+
+    const myScheduleId = parseMyScheduleIdFromDescription(existing.description);
+
+    const [targetFacultyRow, targetScheduleRow, myScheduleRow] = await Promise.all([
+      existing.targetFacultyId
+        ? db.faculty.findUnique({
+            where: { id: existing.targetFacultyId },
+            include: { user: { select: { name: true, email: true } } },
+          })
+        : Promise.resolve(null),
+      existing.targetScheduleId
+        ? db.facultySchedule.findUnique({
+            where: { id: existing.targetScheduleId },
+            include: scheduleInclude,
+          })
+        : Promise.resolve(null),
+      myScheduleId
+        ? db.facultySchedule.findUnique({
+            where: { id: myScheduleId },
+            include: scheduleInclude,
+          })
+        : Promise.resolve(null),
+    ]);
+
+    const base = serializeRequest(existing);
+    return successResponse({
+      ...base,
+      faculty: {
+        id: existing.faculty.id,
+        name: existing.faculty.user.name,
+        email: existing.faculty.user.email,
+        designation: existing.faculty.designation,
+        employeeId: existing.faculty.employeeId,
+        departmentName: existing.faculty.department?.name ?? "—",
+      },
+      targetFaculty: targetFacultyRow
+        ? {
+            id: targetFacultyRow.id,
+            name: targetFacultyRow.user.name,
+            email: targetFacultyRow.user.email,
+            designation: targetFacultyRow.designation,
+          }
+        : null,
+      targetSchedule: scheduleToSummary(targetScheduleRow),
+      mySchedule: scheduleToSummary(myScheduleRow),
+    });
   } catch (e) {
     console.error("GET faculty request error:", e);
     return internalErrorResponse("Failed to load request");
