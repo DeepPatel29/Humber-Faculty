@@ -9,6 +9,7 @@ import {
   RescheduleRequestDialog,
   LeaveRequestDialog,
 } from "@/components/faculty/request-dialogs";
+import { RequestDetailsDialog } from "@/components/faculty/request-details-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,7 +27,7 @@ import {
   useUnreadCount,
   useWithdrawRequest,
 } from "@/hooks/use-faculty";
-import { RequestStatus } from "@/lib/types/faculty";
+import { RequestStatus, type FacultyRequest } from "@/lib/types/faculty";
 import { toast } from "sonner";
 
 function RequestsSkeleton() {
@@ -54,6 +55,8 @@ export default function RequestsPage() {
   const [swapOpen, setSwapOpen] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsRequestId, setDetailsRequestId] = useState<string | null>(null);
 
   const { data: requestsData, isLoading, error, mutate } = useRequests();
   const { data: classOptions = [] } = useClassOptions();
@@ -86,6 +89,11 @@ export default function RequestsPage() {
   const handleRequestSuccess = () => {
     mutate();
   };
+
+  function handleViewDetails(request: FacultyRequest) {
+    setDetailsRequestId(request.id);
+    setDetailsOpen(true);
+  }
 
   if (error) {
     return (
@@ -171,7 +179,7 @@ export default function RequestsPage() {
               ) : (
                 <RequestsList
                   requests={pendingRequests}
-                  onView={(request) => console.log("View:", request.id)}
+                  onView={handleViewDetails}
                   onWithdraw={(request) => handleWithdraw(request.id)}
                 />
               )}
@@ -183,7 +191,7 @@ export default function RequestsPage() {
               ) : (
                 <RequestsList
                   requests={processedRequests}
-                  onView={(request) => console.log("View:", request.id)}
+                  onView={handleViewDetails}
                 />
               )}
             </TabsContent>
@@ -209,6 +217,14 @@ export default function RequestsPage() {
         open={leaveOpen} 
         onOpenChange={setLeaveOpen}
         onSuccess={handleRequestSuccess}
+      />
+      <RequestDetailsDialog
+        requestId={detailsRequestId}
+        open={detailsOpen}
+        onOpenChange={(open) => {
+          setDetailsOpen(open);
+          if (!open) setDetailsRequestId(null);
+        }}
       />
     </>
   );

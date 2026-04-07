@@ -24,7 +24,7 @@ const typeIcons: Record<NotificationType, React.ComponentType<{ className?: stri
 };
 
 const typeColors: Record<NotificationType, string> = {
-  [NotificationType.REQUEST_UPDATE]: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  [NotificationType.REQUEST_UPDATE]: "bg-primary/10 text-primary",
   [NotificationType.SCHEDULE_CHANGE]: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   [NotificationType.ANNOUNCEMENT]: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
   [NotificationType.REMINDER]: "bg-green-500/10 text-green-600 dark:text-green-400",

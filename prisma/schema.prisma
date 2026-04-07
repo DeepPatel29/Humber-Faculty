@@ -163,7 +163,7 @@ model Faculty {
 }
 
 model FacultyProfile {
-  id                String   @id @default(uuid())
+  id                String   @id
   facultyId         String   @unique
   bio               String?
   phone             String?
@@ -174,7 +174,9 @@ model FacultyProfile {
   publications      String[] @default([])
   socialLinks       Json     @default("{}")
   createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  updatedAt         DateTime
+  Faculty           Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+}
 
   faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 
@@ -182,7 +184,7 @@ model FacultyProfile {
 }
 
 model FacultySchedule {
-  id           String           @id @default(uuid())
+  id           String           @id
   facultyId    String
   courseId     String
   roomId       String
@@ -229,7 +231,9 @@ model FacultyAvailabilityDay {
   dayOfWeek      DayOfWeek
   isAvailable    Boolean   @default(true)
 
-  availability FacultyAvailability @relation(fields: [availabilityId], references: [id], onDelete: Cascade)
+  @@index([token])
+  @@index([userId])
+}
 
   @@unique([availabilityId, dayOfWeek])
   @@schema("faculty_schema")
@@ -262,31 +266,40 @@ model FacultyRequest {
   @@schema("faculty_schema")
 }
 
-model FacultyRequestTimeline {
-  id        String   @id @default(uuid())
-  requestId String
-  status    RequestStatus
-  comment   String?
-  createdBy String
-  createdAt DateTime @default(now())
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
 
-  request FacultyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+enum NotificationType {
+  REQUEST_UPDATE
+  SCHEDULE_CHANGE
+  ANNOUNCEMENT
+  REMINDER
+  SYSTEM
+}
 
   @@index([requestId])
   @@schema("faculty_schema")
 }
 
-model FacultyNotification {
-  id        String           @id @default(uuid())
-  facultyId String
-  type      NotificationType
-  title     String
-  message   String
-  isRead    Boolean          @default(false)
-  link      String?
-  createdAt DateTime         @default(now())
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
 
-  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+enum RequestType {
+  SWAP
+  RESCHEDULE
+  LEAVE
+}
 
   @@index([facultyId, isRead])
   @@index([facultyId, createdAt(sort: Desc)])

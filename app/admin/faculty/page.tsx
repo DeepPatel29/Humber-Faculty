@@ -35,8 +35,8 @@ export default function AdminFacultyPage() {
               <Card key={f.id}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
-                      <User className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 dark:bg-primary/20">
+                      <User className="h-6 w-6 text-primary" />
                     </div>
                     <div>
                       <CardTitle className="text-base">{f.name}</CardTitle>

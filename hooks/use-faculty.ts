@@ -22,6 +22,7 @@ import {
   markAllNotificationsAsRead,
   getClassOptions,
   getColleagueOptions,
+  getDepartmentOptions,
   type TimetableParams,
   type RequestsParams,
   type NotificationsParams,
@@ -351,6 +352,21 @@ export function useColleagueOptions(config?: SWRConfiguration) {
         throw new Error(res.error || "Failed to fetch colleague options");
       }
       // Safely normalize data to always be an array
+      const data = Array.isArray(res.data) ? res.data : [];
+      return data;
+    },
+    { ...defaultConfig, ...config }
+  );
+}
+
+export function useDepartmentOptions(config?: SWRConfiguration) {
+  return useSWR(
+    "faculty-department-options",
+    async () => {
+      const res = await getDepartmentOptions();
+      if (!res.success) {
+        throw new Error(res.error || "Failed to fetch department options");
+      }
       const data = Array.isArray(res.data) ? res.data : [];
       return data;
     },

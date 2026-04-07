@@ -132,8 +132,8 @@ export function AvailabilityForm({ availability, onSave, isSubmitting: externalS
 	return (
 		<form onSubmit={(e) => e.preventDefault()} className="space-y-6">
 			{/* Info Banner */}
-			<div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 px-4 py-3">
-				<p className="text-sm text-blue-800 dark:text-blue-300">
+			<div className="rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 dark:bg-primary/10">
+				<p className="text-sm text-foreground">
 					<strong>Save Draft</strong> saves locally. <strong>Submit for Approval</strong> sends a request to your admin/scheduler for review.
 				</p>
 			</div>
@@ -385,7 +385,7 @@ export function AvailabilityForm({ availability, onSave, isSubmitting: externalS
 				<Button
 					type="button"
 					disabled={isSubmitting}
-					className="bg-blue-600 hover:bg-blue-500"
+					className="bg-primary text-primary-foreground hover:bg-primary/90"
 					onClick={() => form.handleSubmit((data) => handleSubmit(data, true))()}
 				>
 					{isSubmitting ? (
@@ -420,7 +420,7 @@ export function AvailabilityForm({ availability, onSave, isSubmitting: externalS
 							<Button
 								size="sm"
 								disabled={isSubmitting}
-								className="bg-blue-600 hover:bg-blue-500"
+								className="bg-primary text-primary-foreground hover:bg-primary/90"
 								onClick={() => form.handleSubmit((data) => handleSubmit(data, true))()}
 							>
 								<Send className="mr-1.5 h-4 w-4" />
