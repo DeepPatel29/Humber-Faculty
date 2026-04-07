@@ -5,6 +5,7 @@ import {
 	requireFacultyPortalAccess,
 } from "@/lib/auth-helpers";
 import { db, ensureFacultyExists } from "@/lib/db";
+import { activeFacultyScheduleWhere } from "@/lib/faculty-schedule-queries";
 import { internalErrorResponse, successResponse } from "@/lib/api-response";
 
 export async function GET(request: NextRequest) {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
 			const faculty = await ensureFacultyExists(user!.id, user!.name, user!.email);
 			if (faculty) {
 				const schedules = await db.facultySchedule.findMany({
-					where: { facultyId: faculty.id, isActive: true },
+					where: activeFacultyScheduleWhere(faculty.id),
 					include: { course: true, room: true },
 					orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
 					take: limit,

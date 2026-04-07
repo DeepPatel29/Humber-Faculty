@@ -3,6 +3,7 @@ import {
   PreferredSlot,
   DayOfWeek,
   RequestStatus,
+  FacultyStatus,
 } from "@/lib/types/faculty";
 
 // ============================================================================
@@ -45,10 +46,35 @@ export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 // Availability Schemas
 // ============================================================================
 
-export const availabilityDaySchema = z.object({
-  dayOfWeek: z.nativeEnum(DayOfWeek),
-  isAvailable: z.boolean(),
-});
+const optionalDayTimeSchema = z
+  .union([timeStringSchema, z.literal("")])
+  .optional()
+  .transform((v) => (v === "" || v === undefined ? undefined : v));
+
+export const availabilityDaySchema = z
+  .object({
+    dayOfWeek: z.nativeEnum(DayOfWeek),
+    isAvailable: z.boolean(),
+    startTime: optionalDayTimeSchema,
+    endTime: optionalDayTimeSchema,
+  })
+  .superRefine((day, ctx) => {
+    if (day.isAvailable) {
+      if (!day.startTime || !day.endTime) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "When available, provide start and end time for this day",
+          path: ["startTime"],
+        });
+      } else if (day.startTime >= day.endTime) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Start time must be before end time",
+          path: ["endTime"],
+        });
+      }
+    }
+  });
 
 export const updateAvailabilitySchema = z
   .object({
@@ -232,6 +258,7 @@ export const updateFacultyResourceSchema = z.object({
   departmentId: uuidSchema.optional(),
   employeeId: z.string().min(1).max(64).optional(),
   designation: z.string().min(1).max(200).optional(),
+  status: z.nativeEnum(FacultyStatus).optional(),
 });
 
 export type UpdateFacultyResourceInput = z.infer<typeof updateFacultyResourceSchema>;

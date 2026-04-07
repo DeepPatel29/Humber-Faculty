@@ -34,6 +34,7 @@ export async function GET(_request: NextRequest, { params }: RouteCtx) {
         user: { select: { id: true, name: true, email: true, role: true } },
         department: true,
         profile: true,
+        preferredSubjects: { orderBy: { createdAt: "asc" } },
       },
     });
 
@@ -48,7 +49,13 @@ export async function GET(_request: NextRequest, { params }: RouteCtx) {
         departmentId: row.departmentId,
         employeeId: row.employeeId,
         designation: row.designation,
+        status: row.status,
         joiningDate: row.joiningDate.toISOString(),
+        preferredSubjects: row.preferredSubjects.map((p) => ({
+          id: p.id,
+          subjectName: p.subjectName,
+          createdAt: p.createdAt.toISOString(),
+        })),
         user: row.user,
         department: row.department,
         profile: row.profile,
@@ -100,11 +107,13 @@ export async function PUT(request: NextRequest, { params }: RouteCtx) {
         }),
         ...(parsed.data.employeeId !== undefined && { employeeId: parsed.data.employeeId }),
         ...(parsed.data.designation !== undefined && { designation: parsed.data.designation }),
+        ...(parsed.data.status !== undefined && { status: parsed.data.status }),
       },
       include: {
         user: { select: { id: true, name: true, email: true, role: true } },
         department: true,
         profile: true,
+        preferredSubjects: { orderBy: { createdAt: "asc" } },
       },
     });
 
@@ -115,7 +124,13 @@ export async function PUT(request: NextRequest, { params }: RouteCtx) {
         departmentId: updated.departmentId,
         employeeId: updated.employeeId,
         designation: updated.designation,
+        status: updated.status,
         joiningDate: updated.joiningDate.toISOString(),
+        preferredSubjects: updated.preferredSubjects.map((p) => ({
+          id: p.id,
+          subjectName: p.subjectName,
+          createdAt: p.createdAt.toISOString(),
+        })),
         user: updated.user,
         department: updated.department,
         profile: updated.profile,

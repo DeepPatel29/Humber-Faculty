@@ -36,6 +36,12 @@ export async function GET(request: NextRequest) {
 						departmentId: faculty.departmentId,
 						employeeId: faculty.employeeId,
 						designation: faculty.designation,
+						status: faculty.status,
+						preferredSubjects: faculty.preferredSubjects.map((p) => ({
+							id: p.id,
+							subjectName: p.subjectName,
+							createdAt: p.createdAt.toISOString(),
+						})),
 						joiningDate: faculty.joiningDate?.toISOString() || "",
 						user: {
 							id: user!.id,

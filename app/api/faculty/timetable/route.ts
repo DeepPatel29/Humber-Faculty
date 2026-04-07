@@ -5,6 +5,7 @@ import {
 	requireFacultyPortalAccess,
 } from "@/lib/auth-helpers";
 import { db, ensureFacultyExists } from "@/lib/db";
+import { activeFacultyScheduleWhere } from "@/lib/faculty-schedule-queries";
 import { internalErrorResponse, successResponse } from "@/lib/api-response";
 
 export async function GET(request: NextRequest) {
@@ -23,11 +24,7 @@ export async function GET(request: NextRequest) {
 				const courseCode = searchParams.get("courseCode");
 
 				const schedules = await db.facultySchedule.findMany({
-					where: {
-						facultyId: faculty.id,
-						isActive: true,
-						...(courseCode ? { course: { code: courseCode } } : {}),
-					},
+					where: activeFacultyScheduleWhere(faculty.id, courseCode ? { course: { code: courseCode } } : {}),
 					include: { course: true, room: true },
 					orderBy: { startTime: "asc" },
 				});
@@ -38,6 +35,7 @@ export async function GET(request: NextRequest) {
 						facultyId: s.facultyId,
 						courseId: s.courseId,
 						roomId: s.roomId,
+						termId: s.termId,
 						courseName: s.course?.name || "Unknown",
 						courseCode: s.course?.code || "",
 						dayOfWeek: s.dayOfWeek,
@@ -51,6 +49,10 @@ export async function GET(request: NextRequest) {
 						semester: s.semester,
 						academicYear: s.academicYear,
 						isActive: s.isActive,
+						assignmentStatus: s.assignmentStatus,
+						studentCount: s.studentCount,
+						startDate: s.startDate?.toISOString() ?? null,
+						endDate: s.endDate?.toISOString() ?? null,
 					}))
 				);
 			}
