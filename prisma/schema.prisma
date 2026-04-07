@@ -8,7 +8,7 @@ datasource db {
   schemas  = ["faculty_schema"]
 }
 
-// ================= ENUMS =================
+// ================= ENUMS (faculty_schema) =================
 
 enum AppRole {
   ADMIN
@@ -16,13 +16,14 @@ enum AppRole {
   STUDENT
   SCHEDULER
 
-@@schema("faculty_schema")
+  @@schema("faculty_schema")
 }
 
 enum RequestType {
   SWAP
   RESCHEDULE
   LEAVE
+
   @@schema("faculty_schema")
 }
 
@@ -31,6 +32,7 @@ enum RequestStatus {
   APPROVED
   REJECTED
   WITHDRAWN
+
   @@schema("faculty_schema")
 }
 
@@ -40,6 +42,7 @@ enum NotificationType {
   ANNOUNCEMENT
   REMINDER
   SYSTEM
+
   @@schema("faculty_schema")
 }
 
@@ -49,6 +52,7 @@ enum ScheduleItemType {
   TUTORIAL
   SEMINAR
   OFFICE_HOURS
+
   @@schema("faculty_schema")
 }
 
@@ -57,6 +61,7 @@ enum PreferredSlot {
   AFTERNOON
   EVENING
   ANY
+
   @@schema("faculty_schema")
 }
 
@@ -68,10 +73,28 @@ enum DayOfWeek {
   FRIDAY
   SATURDAY
   SUNDAY
+
   @@schema("faculty_schema")
 }
 
-// ================= AUTH TABLES =================
+enum FacultyStatus {
+  ACTIVE
+  ON_LEAVE
+  INACTIVE
+
+  @@schema("faculty_schema")
+}
+
+enum AssignmentStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+
+  @@schema("faculty_schema")
+}
+
+// ================= AUTH TABLES (faculty_schema) =================
 
 model User {
   id            String   @id @default(uuid())
@@ -108,7 +131,7 @@ model Session {
 }
 
 model Account {
-  id                    String   @id @default(cuid())
+  id                    String    @id @default(cuid())
   accountId             String
   providerId            String
   userId                String
@@ -119,8 +142,8 @@ model Account {
   refreshTokenExpiresAt DateTime?
   scope                 String?
   password              String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -139,26 +162,69 @@ model Verification {
   @@schema("faculty_schema")
 }
 
-// ================= FACULTY TABLES =================
+// ================= FACULTY TABLES (faculty_schema) =================
 
 model Faculty {
-  id           String   @id @default(uuid())
-  userId       String   @unique
-  departmentId String
-  employeeId   String   @unique
+  id           String        @id @default(uuid())
+  userId       String        @unique
+  departmentId Int?
+  employeeId   String        @unique
   designation  String
-  joiningDate  DateTime @default(now())
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  joiningDate  DateTime      @default(now())
+  status       FacultyStatus @default(ACTIVE)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
-  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  profile       FacultyProfile?
-  schedules     FacultySchedule[]
-  availability  FacultyAvailability?
-  requests      FacultyRequest[]
-  notifications FacultyNotification[]
+  user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile           FacultyProfile?
+  schedules         FacultySchedule[]
+  availability      FacultyAvailability?
+  requests          FacultyRequest[]
+  notifications     FacultyNotification[]
+  preferredSubjects FacultyPreferredSubject[]
+  teachingHistory   FacultyTeachingHistory[]
 
   @@index([departmentId])
+  @@index([status])
+  @@schema("faculty_schema")
+}
+
+model FacultyPreferredSubject {
+  id          String   @id @default(uuid())
+  facultyId   String
+  subjectName String
+  createdAt   DateTime @default(now())
+
+  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@unique([facultyId, subjectName])
+  @@index([facultyId])
+  @@schema("faculty_schema")
+}
+
+/// Teaching experience outside or before our scheduling system (other institutions,
+/// manual CV-style entries). Not the same as `FacultySchedule` (internal assignments).
+model FacultyTeachingHistory {
+  id              String    @id @default(uuid())
+  facultyId       String
+  institutionName String
+  courseTitle     String
+  subjectArea     String?
+  termLabel       String?
+  academicYear    String?
+  startDate       DateTime?
+  endDate         DateTime?
+  studentCount    Int?
+  notes           String?
+  isExternal      Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@index([facultyId])
+  @@index([institutionName])
+  @@index([courseTitle])
   @@schema("faculty_schema")
 }
 
@@ -184,26 +250,37 @@ model FacultyProfile {
 }
 
 model FacultySchedule {
-  id           String           @id
-  facultyId    String
-  courseId     String
-  roomId       String
-  dayOfWeek    DayOfWeek
-  startTime    String
-  endTime      String
-  type         ScheduleItemType @default(LECTURE)
-  section      String?
-  program      String?
-  semester     Int?
-  academicYear String           @default("2024-2025")
-  isActive     Boolean          @default(true)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id               String           @id @default(uuid())
+  facultyId        String
+  courseId         Int?
+  roomId           Int?
+  termId           Int?
+  dayOfWeek        DayOfWeek
+  startTime        String
+  endTime          String
+  type             ScheduleItemType @default(LECTURE)
+  section          String?
+  program          String?
+  /// Legacy labeling; prefer `termId` as source of truth when present.
+  semester         Int?
+  academicYear     String?
+  isActive         Boolean          @default(true)
+  assignmentStatus AssignmentStatus @default(ACTIVE)
+  studentCount     Int?
+  startDate        DateTime?
+  endDate          DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 
+  @@index([facultyId])
   @@index([facultyId, dayOfWeek])
   @@index([facultyId, isActive])
+  @@index([termId])
+  @@index([assignmentStatus])
+  @@index([courseId])
+  @@index([roomId])
   @@schema("faculty_schema")
 }
 
@@ -230,12 +307,16 @@ model FacultyAvailabilityDay {
   availabilityId String
   dayOfWeek      DayOfWeek
   isAvailable    Boolean   @default(true)
+  /// When `isAvailable` is true, writers should set both times (app-level validation).
+  startTime      String?
+  endTime        String?
 
   @@index([token])
   @@index([userId])
 }
 
   @@unique([availabilityId, dayOfWeek])
+  @@index([availabilityId])
   @@schema("faculty_schema")
 }
 
@@ -258,7 +339,7 @@ model FacultyRequest {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  faculty  Faculty                 @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  faculty  Faculty                  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
   timeline FacultyRequestTimeline[]
 
   @@index([facultyId, status])
@@ -266,15 +347,13 @@ model FacultyRequest {
   @@schema("faculty_schema")
 }
 
-enum DayOfWeek {
-  MONDAY
-  TUESDAY
-  WEDNESDAY
-  THURSDAY
-  FRIDAY
-  SATURDAY
-  SUNDAY
-}
+model FacultyRequestTimeline {
+  id        String        @id @default(uuid())
+  requestId String
+  status    RequestStatus
+  comment   String?
+  createdBy String
+  createdAt DateTime      @default(now())
 
 enum NotificationType {
   REQUEST_UPDATE

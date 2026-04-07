@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, type Resolver } from "react-hook-form";
 import { Loader2, Save, Send, Clock, Calendar, BookOpen, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,14 +64,17 @@ export function AvailabilityForm({ availability, onSave, isSubmitting: externalS
 
 	const defaultDays = allDays.map((day) => {
 		const existingDay = availabilityDays.find((d) => d.dayOfWeek === day);
+		const isAvailable = existingDay?.isAvailable ?? true;
 		return {
 			dayOfWeek: day,
-			isAvailable: existingDay?.isAvailable ?? true,
+			isAvailable,
+			startTime: existingDay?.startTime ?? (isAvailable ? "09:00" : undefined),
+			endTime: existingDay?.endTime ?? (isAvailable ? "17:00" : undefined),
 		};
 	});
 
 	const form = useForm<UpdateAvailabilityInput>({
-		resolver: zodResolver(updateAvailabilitySchema),
+		resolver: zodResolver(updateAvailabilitySchema) as Resolver<UpdateAvailabilityInput>,
 		defaultValues: {
 			preferredSlot: availability?.preferredSlot ?? PreferredSlot.ANY,
 			customStartTime: availability?.customStartTime ?? "",
@@ -110,9 +113,13 @@ export function AvailabilityForm({ availability, onSave, isSubmitting: externalS
 
 	const toggleDay = (dayIndex: number) => {
 		const newDays = [...days];
+		const wasAvailable = newDays[dayIndex].isAvailable;
+		const nextAvailable = !wasAvailable;
 		newDays[dayIndex] = {
 			...newDays[dayIndex],
-			isAvailable: !newDays[dayIndex].isAvailable,
+			isAvailable: nextAvailable,
+			startTime: nextAvailable ? (newDays[dayIndex].startTime || "09:00") : undefined,
+			endTime: nextAvailable ? (newDays[dayIndex].endTime || "17:00") : undefined,
 		};
 		setValue("days", newDays);
 		setHasChanges(true);
@@ -147,7 +154,7 @@ export function AvailabilityForm({ availability, onSave, isSubmitting: externalS
 					</CardTitle>
 					<CardDescription>Select the days you are available for classes</CardDescription>
 				</CardHeader>
-				<CardContent>
+				<CardContent className="space-y-6">
 					<div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
 						{days.map((day, index) => (
 							<button
@@ -169,6 +176,53 @@ export function AvailabilityForm({ availability, onSave, isSubmitting: externalS
 								</span>
 							</button>
 						))}
+					</div>
+					<div className="space-y-3">
+						<p className="text-sm font-medium">Hours for each available day</p>
+						<div className="grid gap-3 sm:grid-cols-2">
+							{days.map((day, index) =>
+								day.isAvailable ? (
+									<div
+										key={day.dayOfWeek}
+										className="flex flex-col gap-2 rounded-lg border border-border p-3 sm:flex-row sm:items-end"
+									>
+										<span className="text-sm font-medium text-muted-foreground sm:w-24 sm:shrink-0">
+											{dayLabels[day.dayOfWeek]}
+										</span>
+										<div className="grid flex-1 grid-cols-2 gap-2">
+											<Field>
+												<FieldLabel className="text-xs">From</FieldLabel>
+												<Input
+													type="time"
+													value={day.startTime ?? ""}
+													onChange={(e) => {
+														const v = e.target.value;
+														const next = [...days];
+														next[index] = { ...next[index], startTime: v || undefined };
+														setValue("days", next);
+														setHasChanges(true);
+													}}
+												/>
+											</Field>
+											<Field>
+												<FieldLabel className="text-xs">To</FieldLabel>
+												<Input
+													type="time"
+													value={day.endTime ?? ""}
+													onChange={(e) => {
+														const v = e.target.value;
+														const next = [...days];
+														next[index] = { ...next[index], endTime: v || undefined };
+														setValue("days", next);
+														setHasChanges(true);
+													}}
+												/>
+											</Field>
+										</div>
+									</div>
+								) : null
+							)}
+						</div>
 					</div>
 				</CardContent>
 			</Card>

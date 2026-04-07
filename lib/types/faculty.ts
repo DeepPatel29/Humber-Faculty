@@ -64,6 +64,22 @@ export const DayOfWeek = {
 } as const;
 export type DayOfWeek = (typeof DayOfWeek)[keyof typeof DayOfWeek];
 
+export const FacultyStatus = {
+  ACTIVE: "ACTIVE",
+  ON_LEAVE: "ON_LEAVE",
+  INACTIVE: "INACTIVE",
+} as const;
+export type FacultyStatus = (typeof FacultyStatus)[keyof typeof FacultyStatus];
+
+export const AssignmentStatus = {
+  PLANNED: "PLANNED",
+  ACTIVE: "ACTIVE",
+  COMPLETED: "COMPLETED",
+  CANCELLED: "CANCELLED",
+} as const;
+export type AssignmentStatus =
+  (typeof AssignmentStatus)[keyof typeof AssignmentStatus];
+
 // ============================================================================
 // Base Entities
 // ============================================================================
@@ -114,6 +130,7 @@ export interface Faculty {
   employeeId: string;
   designation: string;
   joiningDate: Date;
+  status: FacultyStatus;
   user: User;
   department: Department;
 }
@@ -136,6 +153,7 @@ export interface FacultyScheduleItem {
   facultyId: string;
   courseId: string;
   roomId: string;
+  termId: string | null;
   dayOfWeek: DayOfWeek;
   startTime: string;
   endTime: string;
@@ -145,6 +163,10 @@ export interface FacultyScheduleItem {
   semester: number | null;
   academicYear: string;
   isActive: boolean;
+  assignmentStatus: AssignmentStatus;
+  studentCount: number | null;
+  startDate: string | null;
+  endDate: string | null;
   course: Course;
   room: Room;
 }
@@ -166,6 +188,8 @@ export interface FacultyAvailabilityDay {
   availabilityId: string;
   dayOfWeek: DayOfWeek;
   isAvailable: boolean;
+  startTime: string | null;
+  endTime: string | null;
 }
 
 export interface FacultyRequest {
@@ -292,6 +316,8 @@ export interface UpdateAvailabilityRequest {
   days: Array<{
     dayOfWeek: DayOfWeek;
     isAvailable: boolean;
+    startTime?: string | null;
+    endTime?: string | null;
   }>;
 }
 

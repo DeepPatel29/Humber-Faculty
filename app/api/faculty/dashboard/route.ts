@@ -6,6 +6,7 @@ import {
 	requireFacultyPortalAccess,
 } from "@/lib/auth-helpers";
 import { db, ensureFacultyExists } from "@/lib/db";
+import { activeFacultyScheduleWhere } from "@/lib/faculty-schedule-queries";
 import { internalErrorResponse, successResponse } from "@/lib/api-response";
 
 const WEEK_DAYS: DayOfWeek[] = [
@@ -33,13 +34,13 @@ export async function GET(_request: NextRequest) {
 				const todayDay = WEEK_DAYS[new Date().getDay()];
 
 				const todaySchedule = await db.facultySchedule.findMany({
-					where: { facultyId: faculty.id, dayOfWeek: todayDay, isActive: true },
+					where: activeFacultyScheduleWhere(faculty.id, { dayOfWeek: todayDay }),
 					include: { course: true, room: true },
 					orderBy: { startTime: "asc" },
 				});
 
 				const allSchedules = await db.facultySchedule.findMany({
-					where: { facultyId: faculty.id, isActive: true },
+					where: activeFacultyScheduleWhere(faculty.id),
 					include: { course: true, room: true },
 					orderBy: { startTime: "asc" },
 					take: 6,
@@ -61,6 +62,7 @@ export async function GET(_request: NextRequest) {
 						facultyId: s.facultyId,
 						courseId: s.courseId,
 						roomId: s.roomId,
+						termId: s.termId,
 						courseName: s.course?.name || "Unknown",
 						courseCode: s.course?.code || "",
 						dayOfWeek: s.dayOfWeek,
@@ -74,6 +76,10 @@ export async function GET(_request: NextRequest) {
 						semester: s.semester,
 						academicYear: s.academicYear,
 						isActive: s.isActive,
+						assignmentStatus: s.assignmentStatus,
+						studentCount: s.studentCount,
+						startDate: s.startDate?.toISOString() ?? null,
+						endDate: s.endDate?.toISOString() ?? null,
 					}));
 
 				return successResponse({

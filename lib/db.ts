@@ -58,7 +58,7 @@ export async function ensureFacultyExists(
 	try {
 		let faculty = await db.faculty.findUnique({
 			where: { userId },
-			include: { profile: true, department: true },
+			include: { profile: true, department: true, preferredSubjects: true },
 		});
 
 		if (!faculty) {
@@ -95,7 +95,7 @@ export async function ensureFacultyExists(
 						},
 					},
 				},
-				include: { profile: true, department: true },
+				include: { profile: true, department: true, preferredSubjects: true },
 			});
 		}
 		return faculty;
