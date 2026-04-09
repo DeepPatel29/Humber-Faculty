@@ -18,6 +18,7 @@ yarn-error.log*
 
 # env files
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -33,3 +34,27 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Planning & Debug
+.planning/
+docs/
+AGENTS.md
+.github/workflows
+.planning/debug
+
+# IDE & OS
+.DS_Store
+*.swp
+*.swo
+*.local
+
+# Test results
+test-results/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Coverage
+coverage/
+.nyc_output/

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { GraduationCap, Eye, EyeOff, Loader2 } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 
@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -21,8 +22,12 @@ export default function LoginPage() {
 
     setIsLoading(true);
 
-    const testEmails = ["admin@university.edu", "faculty@university.edu", "scheduler@university.edu"];
-    
+    const testEmails = [
+      "admin@university.edu",
+      "faculty@university.edu",
+      "scheduler@university.edu",
+    ];
+
     if (testEmails.includes(email) && password === "password123") {
       try {
         const res = await fetch("/api/auth/mock-login", {
@@ -33,7 +38,7 @@ export default function LoginPage() {
         });
         const data = await res.json();
         if (data.user) {
-          toast.success("Login successful!");
+          toast.success("Welcome back!");
           window.location.href = "/faculty/dashboard";
           return;
         }
@@ -59,7 +64,7 @@ export default function LoginPage() {
         return;
       }
 
-      toast.success("Login successful!");
+      toast.success("Welcome back!");
       window.location.href = "/faculty/dashboard";
     } catch {
       try {
@@ -71,7 +76,7 @@ export default function LoginPage() {
         });
         const data = await res.json();
         if (data.user) {
-          toast.success("Login successful!");
+          toast.success("Welcome back!");
           window.location.href = "/faculty/dashboard";
           return;
         }
@@ -84,88 +89,128 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950 px-4">
-      <div className="w-full max-w-md rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 shadow-sm dark:shadow-none">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <GraduationCap className="h-7 w-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">
-            Welcome Back
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">
-            Sign in to FacultyHub
-          </p>
+    <div className="w-full max-w-md">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground mb-4">
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>Welcome back</span>
         </div>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">
+          Sign in to your account
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Enter your credentials to access your dashboard
+        </p>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-zinc-300">
-              Email
-            </label>
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Email Field */}
+        <div className="space-y-2">
+          <label
+            htmlFor="email"
+            className="text-sm font-medium text-foreground"
+          >
+            Email address
+          </label>
+          <div className="relative">
             <input
+              id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onFocus={() => setFocusedField("email")}
+              onBlur={() => setFocusedField(null)}
               placeholder="you@university.edu"
               required
-              className="w-full rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2.5 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground shadow-sm transition-all duration-200 placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <div
+              className={`absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-primary to-primary/60 transition-all duration-300 ${
+                focusedField === "email" ? "w-full" : "w-0"
+              }`}
             />
           </div>
+        </div>
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-zinc-300">
+        {/* Password Field */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="password"
+              className="text-sm font-medium text-foreground"
+            >
               Password
             </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className="w-full rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2.5 pr-10 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-zinc-500"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
+            <Link
+              href="#"
+              className="text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              Forgot password?
+            </Link>
           </div>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onFocus={() => setFocusedField("password")}
+              onBlur={() => setFocusedField(null)}
+              placeholder="••••••••"
+              required
+              className="w-full rounded-xl border border-input bg-background px-4 py-3 pr-10 text-foreground shadow-sm transition-all duration-200 placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <div
+              className={`absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-primary to-primary/60 transition-all duration-300 ${
+                focusedField === "password" ? "w-full" : "w-0"
+              }`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              "Sign In"
-            )}
-          </button>
-        </form>
+        {/* Submit Button */}
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-300 hover:bg-primary/90 hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Signing in...</span>
+            </>
+          ) : (
+            <>
+              <span>Sign In</span>
+              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+            </>
+          )}
+        </button>
+      </form>
 
-        <p className="mt-6 text-center text-sm text-gray-500 dark:text-zinc-400">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/signup"
-            className="font-medium text-primary hover:text-primary/90"
-          >
-            Sign up
-          </Link>
-        </p>
-      </div>
+      {/* Sign Up Link */}
+      <p className="mt-8 text-center text-sm text-muted-foreground">
+        Don&apos;t have an account?{" "}
+        <Link
+          href="/signup"
+          className="font-semibold text-primary hover:text-primary/80 transition-colors"
+        >
+          Create account
+        </Link>
+      </p>
     </div>
   );
 }
