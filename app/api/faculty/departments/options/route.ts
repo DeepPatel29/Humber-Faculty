@@ -20,9 +20,28 @@ export async function GET(request: NextRequest) {
 	}
 
 	try {
-		const departments = await db.department.findMany({
-			select: { id: true, name: true, code: true },
-			orderBy: { name: "asc" },
+		const [localDepartments, sharedDepartments] = await Promise.all([
+			db.department.findMany({
+				select: { id: true, name: true, code: true },
+				orderBy: { name: "asc" },
+			}),
+			db.sharedDepartment.findMany({
+				select: { id: true, name: true, code: true },
+			}),
+		]);
+
+		const sharedByCode = new Map(
+			sharedDepartments.map((d) => [d.code.trim().toUpperCase(), d] as const)
+		);
+
+		// Keep local UUID ids for safe writes, but source display labels from shared departments by code.
+		const departments = localDepartments.map((d) => {
+			const shared = sharedByCode.get(d.code.trim().toUpperCase());
+			return {
+				id: d.id,
+				name: shared?.name ?? d.name,
+				code: shared?.code ?? d.code,
+			};
 		});
 
 		return successResponse({ departments });

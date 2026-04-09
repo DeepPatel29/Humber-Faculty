@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   const skip = (page - 1) * limit;
 
   try {
-    const [rows, total] = await Promise.all([
+    const [rows, total, sharedDepartments] = await Promise.all([
       db.faculty.findMany({
         skip,
         take: limit,
@@ -43,10 +43,24 @@ export async function GET(request: NextRequest) {
         },
       }),
       db.faculty.count(),
+      db.sharedDepartment.findMany({
+        select: { name: true, code: true },
+      }),
     ]);
+    const sharedByCode = new Map(
+      sharedDepartments.map((d) => [d.code.trim().toUpperCase(), d] as const)
+    );
 
     return successResponse({
       faculty: rows.map((f) => ({
+        department: (() => {
+          const shared = sharedByCode.get(f.department.code.trim().toUpperCase());
+          return {
+            ...f.department,
+            name: shared?.name ?? f.department.name,
+            code: shared?.code ?? f.department.code,
+          };
+        })(),
         id: f.id,
         userId: f.userId,
         departmentId: f.departmentId,
@@ -55,7 +69,6 @@ export async function GET(request: NextRequest) {
         status: f.status,
         joiningDate: f.joiningDate.toISOString(),
         user: f.user,
-        department: f.department,
       })),
       total,
       page,
@@ -112,6 +125,15 @@ export async function POST(request: NextRequest) {
         profile: true,
       },
     });
+    const sharedDepartment = await db.sharedDepartment.findFirst({
+      where: { code: created.department.code },
+      select: { name: true, code: true },
+    });
+    const department = {
+      ...created.department,
+      name: sharedDepartment?.name ?? created.department.name,
+      code: sharedDepartment?.code ?? created.department.code,
+    };
 
     return createdResponse({
       faculty: {
@@ -123,7 +145,7 @@ export async function POST(request: NextRequest) {
         status: created.status,
         joiningDate: created.joiningDate.toISOString(),
         user: created.user,
-        department: created.department,
+        department,
         profile: created.profile,
       },
     });

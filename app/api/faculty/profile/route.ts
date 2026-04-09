@@ -15,6 +15,25 @@ import {
 import { updateProfileSchema } from "@/lib/validations/faculty";
 import type { Prisma } from "@prisma/client";
 
+async function resolveSharedDepartmentLabel(
+	code: string | undefined,
+	fallback: { name: string; code: string }
+): Promise<{ name: string; code: string }> {
+	if (!code) return fallback;
+	try {
+		const shared = await db?.sharedDepartment.findFirst({
+			where: { code },
+			select: { name: true, code: true },
+		});
+		return {
+			name: shared?.name ?? fallback.name,
+			code: shared?.code ?? fallback.code,
+		};
+	} catch {
+		return fallback;
+	}
+}
+
 export async function GET(request: NextRequest) {
 	const { user } = await getSessionUser(request);
 	const authError = requireAuth(user);
@@ -29,6 +48,10 @@ export async function GET(request: NextRequest) {
 			if (faculty) {
 				const profile = faculty.profile;
 				const dept = faculty.department;
+				const sharedDepartment = await resolveSharedDepartmentLabel(dept?.code, {
+					name: dept?.name || "General",
+					code: dept?.code || "GENERAL",
+				});
 				return successResponse({
 					faculty: {
 						id: faculty.id,
@@ -54,8 +77,8 @@ export async function GET(request: NextRequest) {
 						},
 						department: {
 							id: dept?.id || "",
-							name: dept?.name || "General",
-							code: dept?.code || "GENERAL",
+							name: sharedDepartment.name,
+							code: sharedDepartment.code,
 							description: dept?.description || null,
 						},
 					},
@@ -226,6 +249,14 @@ export async function PUT(request: NextRequest) {
 			return internalErrorResponse("Failed to refresh profile");
 		}
 
+		const sharedDepartment = await resolveSharedDepartmentLabel(
+			refreshed.department?.code,
+			{
+				name: refreshed.department?.name || "General",
+				code: refreshed.department?.code || "GENERAL",
+			}
+		);
+
 		return successResponse({
 			faculty: {
 				id: refreshed.id,
@@ -245,8 +276,8 @@ export async function PUT(request: NextRequest) {
 				},
 				department: {
 					id: refreshed.department?.id || "",
-					name: refreshed.department?.name || "General",
-					code: refreshed.department?.code || "GENERAL",
+					name: sharedDepartment.name,
+					code: sharedDepartment.code,
 					description: refreshed.department?.description || null,
 				},
 			},

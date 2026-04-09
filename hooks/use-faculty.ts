@@ -6,6 +6,10 @@ import {
   getDashboardData,
   getProfile,
   updateProfile,
+  getTeachingHistory,
+  createTeachingHistory,
+  updateTeachingHistory,
+  deleteTeachingHistory,
   getTimetable,
   getTodaySchedule,
   getUpcomingSchedule,
@@ -34,6 +38,8 @@ import {
 } from "@/lib/api/faculty-client";
 import type {
   UpdateProfileInput,
+  CreateTeachingHistoryInput,
+  UpdateTeachingHistoryInput,
   UpdateAvailabilityInput,
   CreateSwapRequestInput,
   CreateRescheduleRequestInput,
@@ -100,6 +106,65 @@ export function useUpdateProfile() {
 			return res.data;
 		}
 	);
+}
+
+export function useTeachingHistory(config?: SWRConfiguration) {
+  return useSWR(
+    "faculty-teaching-history",
+    async () => {
+      const res = await getTeachingHistory();
+      if (!res.success || !res.data) {
+        throw new Error(res.error || "Failed to fetch teaching history");
+      }
+      return Array.isArray(res.data.teachingHistory) ? res.data.teachingHistory : [];
+    },
+    { ...defaultConfig, ...config }
+  );
+}
+
+export function useCreateTeachingHistory() {
+  return useSWRMutation(
+    "faculty-teaching-history",
+    async (_key: string, { arg }: { arg: CreateTeachingHistoryInput }) => {
+      const res = await createTeachingHistory(arg);
+      if (!res.success) {
+        throw new Error(res.error || "Failed to create teaching history");
+      }
+      await globalMutate("faculty-teaching-history");
+      return res.data;
+    }
+  );
+}
+
+export function useUpdateTeachingHistory() {
+  return useSWRMutation(
+    "faculty-teaching-history",
+    async (
+      _key: string,
+      { arg }: { arg: { id: string; data: UpdateTeachingHistoryInput } }
+    ) => {
+      const res = await updateTeachingHistory(arg.id, arg.data);
+      if (!res.success) {
+        throw new Error(res.error || "Failed to update teaching history");
+      }
+      await globalMutate("faculty-teaching-history");
+      return res.data;
+    }
+  );
+}
+
+export function useDeleteTeachingHistory() {
+  return useSWRMutation(
+    "faculty-teaching-history",
+    async (_key: string, { arg }: { arg: string }) => {
+      const res = await deleteTeachingHistory(arg);
+      if (!res.success) {
+        throw new Error(res.error || "Failed to delete teaching history");
+      }
+      await globalMutate("faculty-teaching-history");
+      return res.data;
+    }
+  );
 }
 
 // ============================================================================

@@ -20,23 +20,34 @@ export async function GET(request: NextRequest) {
 		try {
 			const faculty = await ensureFacultyExists(user!.id, user!.name, user!.email);
 			if (faculty) {
-				const colleagues = await db.faculty.findMany({
-					where: {
-						NOT: { id: faculty.id },
-						user: { role: { in: [AppRole.STAFF, AppRole.ADMIN] } },
-					},
-					include: {
-						user: true,
-						department: true,
-					},
-				});
+				const [colleagues, sharedDepartments] = await Promise.all([
+					db.faculty.findMany({
+						where: {
+							NOT: { id: faculty.id },
+							user: { role: { in: [AppRole.STAFF, AppRole.ADMIN] } },
+						},
+						include: {
+							user: true,
+							department: true,
+						},
+					}),
+					db.sharedDepartment.findMany({
+						select: { name: true, code: true },
+					}),
+				]);
+				const sharedByCode = new Map(
+					sharedDepartments.map((d) => [d.code.trim().toUpperCase(), d] as const)
+				);
 
 				const colleagueOptions = colleagues.map((c) => ({
 					id: c.id,
 					name: c.user.name,
 					email: c.user.email,
 					designation: c.designation,
-					department: c.department?.name || "Unknown",
+					department:
+						sharedByCode.get(c.department.code.trim().toUpperCase())?.name ||
+						c.department?.name ||
+						"Unknown",
 					avatarUrl: c.user.image,
 				}));
 

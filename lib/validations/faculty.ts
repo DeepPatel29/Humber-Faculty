@@ -244,6 +244,40 @@ export const updateAvailabilityBodySchema = z
 export type UpdateAvailabilityBodyInput = z.infer<typeof updateAvailabilityBodySchema>;
 
 // ============================================================================
+// Teaching History Schemas
+// ============================================================================
+
+const optionalDateStringSchema = z
+  .union([dateStringSchema, z.literal(""), z.null()])
+  .optional()
+  .transform((v) => (v === "" || v === undefined ? null : v));
+
+export const createTeachingHistorySchema = z.object({
+  institutionName: z.string().min(1).max(255),
+  courseTitle: z.string().min(1).max(255),
+  subjectArea: z.string().max(255).optional().nullable(),
+  termLabel: z.string().max(100).optional().nullable(),
+  academicYear: z.string().max(20).optional().nullable(),
+  startDate: optionalDateStringSchema,
+  endDate: optionalDateStringSchema,
+  studentCount: z.number().int().min(0).max(10000).optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+  isExternal: z.boolean().optional(),
+});
+
+export type CreateTeachingHistoryInput = z.infer<typeof createTeachingHistorySchema>;
+
+export const updateTeachingHistorySchema = createTeachingHistorySchema
+  .partial()
+  .refine(
+    (data) =>
+      Object.values(data).some((value) => value !== undefined),
+    { message: "At least one field is required for update" }
+  );
+
+export type UpdateTeachingHistoryInput = z.infer<typeof updateTeachingHistorySchema>;
+
+// ============================================================================
 // Canonical Faculty CRUD (rubric)
 // ============================================================================
 

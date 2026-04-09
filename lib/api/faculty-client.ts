@@ -1,6 +1,7 @@
 import type {
   FacultyDashboardData,
   FacultyProfile,
+  FacultyTeachingHistoryEntry,
   FacultyScheduleItem,
   FacultyRequest,
   FacultyRequestDetail,
@@ -17,7 +18,9 @@ import type {
   CreateRescheduleRequestInput,
   CreateLeaveRequestInput,
   CreateFacultyResourceInput,
+  CreateTeachingHistoryInput,
   UpdateFacultyResourceInput,
+  UpdateTeachingHistoryInput,
 } from "@/lib/validations/faculty";
 
 // ============================================================================
@@ -113,6 +116,50 @@ export async function updateProfile(
     method: "PUT",
     body: JSON.stringify(data),
   });
+}
+
+export async function getTeachingHistory(): Promise<
+  ApiResponse<{ teachingHistory: FacultyTeachingHistoryEntry[] }>
+> {
+  return fetchApi<{ teachingHistory: FacultyTeachingHistoryEntry[] }>(
+    "/api/faculty/teaching-history"
+  );
+}
+
+export async function createTeachingHistory(
+  data: CreateTeachingHistoryInput
+): Promise<ApiResponse<{ teachingHistory: FacultyTeachingHistoryEntry }>> {
+  return fetchApi<{ teachingHistory: FacultyTeachingHistoryEntry }>(
+    "/api/faculty/teaching-history",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function updateTeachingHistory(
+  id: string,
+  data: UpdateTeachingHistoryInput
+): Promise<ApiResponse<{ teachingHistory: FacultyTeachingHistoryEntry }>> {
+  return fetchApi<{ teachingHistory: FacultyTeachingHistoryEntry }>(
+    `/api/faculty/teaching-history/${id}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function deleteTeachingHistory(
+  id: string
+): Promise<ApiResponse<{ deleted: boolean; id: string }>> {
+  return fetchApi<{ deleted: boolean; id: string }>(
+    `/api/faculty/teaching-history/${id}`,
+    {
+      method: "DELETE",
+    }
+  );
 }
 
 // ============================================================================

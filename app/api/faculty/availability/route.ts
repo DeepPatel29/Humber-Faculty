@@ -13,18 +13,32 @@ import {
 } from "@/lib/api-response";
 import { updateAvailabilityBodySchema } from "@/lib/validations/faculty";
 
-const ALL_COURSES = [
-	{ id: "c1", name: "Machine Learning", code: "CS501" },
-	{ id: "c2", name: "Deep Learning", code: "CS601" },
-	{ id: "c3", name: "Data Structures", code: "CS201" },
-	{ id: "c4", name: "Algorithms", code: "CS401" },
-	{ id: "c5", name: "Database Systems", code: "CS301" },
-	{ id: "c6", name: "Computer Networks", code: "CS402" },
-	{ id: "c7", name: "Operating Systems", code: "CS403" },
-	{ id: "c8", name: "Software Engineering", code: "CS404" },
-	{ id: "c9", name: "Artificial Intelligence", code: "CS502" },
-	{ id: "c10", name: "Computer Vision", code: "CS602" },
-];
+interface AvailabilityCourseOption {
+	id: string;
+	name: string;
+	code: string;
+}
+
+async function getAvailabilityCourseOptions(): Promise<AvailabilityCourseOption[]> {
+	if (!db) return [];
+
+	try {
+		const courses = await db.sharedCourse.findMany({
+			select: { id: true, name: true, code: true },
+			orderBy: [{ code: "asc" }, { name: "asc" }],
+		});
+
+		// Keep existing API contract stable for availability UI: ids are strings.
+		return courses.map((c) => ({
+			id: String(c.id),
+			name: c.name,
+			code: c.code,
+		}));
+	} catch (e) {
+		console.error("Availability shared courses fetch error:", e);
+		return [];
+	}
+}
 
 export async function GET(request: NextRequest) {
 	const { user } = await getSessionUser(request);
@@ -33,6 +47,7 @@ export async function GET(request: NextRequest) {
 
 	const portalErr = requireFacultyPortalAccess(user);
 	if (portalErr) return portalErr;
+	const allCourses = await getAvailabilityCourseOptions();
 
 	if (db) {
 		try {
@@ -81,7 +96,7 @@ export async function GET(request: NextRequest) {
 						startTime: d.startTime ?? undefined,
 						endTime: d.endTime ?? undefined,
 					})),
-					allCourses: ALL_COURSES,
+					allCourses,
 					eligibleCourseIds: [],
 				});
 			}
@@ -109,7 +124,7 @@ export async function GET(request: NextRequest) {
 			{ dayOfWeek: "SATURDAY", isAvailable: false },
 			{ dayOfWeek: "SUNDAY", isAvailable: false },
 		],
-		allCourses: ALL_COURSES,
+		allCourses,
 		eligibleCourseIds: [],
 	});
 }
@@ -121,6 +136,7 @@ export async function PUT(request: NextRequest) {
 
 	const portalErr = requireFacultyPortalAccess(user);
 	if (portalErr) return portalErr;
+	const allCourses = await getAvailabilityCourseOptions();
 
 	const parsed = await parseRequestBody(request, updateAvailabilityBodySchema);
 	if (!parsed.success) return parsed.response;
@@ -223,7 +239,7 @@ export async function PUT(request: NextRequest) {
 				startTime: d.startTime ?? undefined,
 				endTime: d.endTime ?? undefined,
 			})),
-			allCourses: ALL_COURSES,
+			allCourses,
 			eligibleCourseIds: [],
 			message: body.submitAsRequest
 				? "Availability update request submitted for admin approval"

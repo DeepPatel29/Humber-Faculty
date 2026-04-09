@@ -41,6 +41,15 @@ export async function GET(_request: NextRequest, { params }: RouteCtx) {
     if (!row) {
       return notFoundResponse("Faculty");
     }
+    const sharedDepartment = await db.sharedDepartment.findFirst({
+      where: { code: row.department.code },
+      select: { name: true, code: true },
+    });
+    const department = {
+      ...row.department,
+      name: sharedDepartment?.name ?? row.department.name,
+      code: sharedDepartment?.code ?? row.department.code,
+    };
 
     return successResponse({
       faculty: {
@@ -57,7 +66,7 @@ export async function GET(_request: NextRequest, { params }: RouteCtx) {
           createdAt: p.createdAt.toISOString(),
         })),
         user: row.user,
-        department: row.department,
+        department,
         profile: row.profile,
       },
     });
@@ -116,6 +125,15 @@ export async function PUT(request: NextRequest, { params }: RouteCtx) {
         preferredSubjects: { orderBy: { createdAt: "asc" } },
       },
     });
+    const sharedDepartment = await db.sharedDepartment.findFirst({
+      where: { code: updated.department.code },
+      select: { name: true, code: true },
+    });
+    const department = {
+      ...updated.department,
+      name: sharedDepartment?.name ?? updated.department.name,
+      code: sharedDepartment?.code ?? updated.department.code,
+    };
 
     return successResponse({
       faculty: {
@@ -132,7 +150,7 @@ export async function PUT(request: NextRequest, { params }: RouteCtx) {
           createdAt: p.createdAt.toISOString(),
         })),
         user: updated.user,
-        department: updated.department,
+        department,
         profile: updated.profile,
       },
     });

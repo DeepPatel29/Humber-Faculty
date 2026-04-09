@@ -1,9 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useDepartmentOptions, useProfile, useUpdateProfile } from "@/hooks/use-faculty";
+import {
+  useCreateTeachingHistory,
+  useDeleteTeachingHistory,
+  useDepartmentOptions,
+  useProfile,
+  useTeachingHistory,
+  useUpdateProfile,
+  useUpdateTeachingHistory,
+} from "@/hooks/use-faculty";
 import { useRoleAuth } from "@/hooks/use-role-auth";
 import { ReadOnlyBanner } from "@/components/role-gate";
+import { TeachingHistorySection } from "@/components/faculty/teaching-history-section";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInitials } from "@/lib/utils";
@@ -30,6 +39,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { updateProfileSchema, type UpdateProfileInput } from "@/lib/validations/faculty";
+import type {
+  CreateTeachingHistoryInput,
+  UpdateTeachingHistoryInput,
+} from "@/lib/validations/faculty";
 
 interface ProfileFormState {
   fullName: string;
@@ -51,8 +64,19 @@ interface ProfileFormState {
 
 export default function ProfilePage() {
   const { data: profile, isLoading, mutate } = useProfile();
+  const {
+    data: teachingHistory = [],
+    isLoading: teachingHistoryLoading,
+    mutate: mutateTeachingHistory,
+  } = useTeachingHistory();
   const { data: departments = [] } = useDepartmentOptions();
   const { trigger: updateProfile, isMutating } = useUpdateProfile();
+  const { trigger: createTeachingHistory, isMutating: isCreatingHistory } =
+    useCreateTeachingHistory();
+  const { trigger: updateTeachingHistory, isMutating: isUpdatingHistory } =
+    useUpdateTeachingHistory();
+  const { trigger: deleteTeachingHistory, isMutating: isDeletingHistory } =
+    useDeleteTeachingHistory();
   const { can, isScheduler, user } = useRoleAuth();
   const canEdit = can("profile:edit:own");
 
@@ -181,6 +205,48 @@ export default function ProfilePage() {
   function handleCancel() {
     if (initialProfileState) applyState(initialProfileState);
     setIsEditing(false);
+  }
+
+  async function handleCreateTeachingHistory(data: CreateTeachingHistoryInput) {
+    try {
+      await createTeachingHistory(data);
+      await mutateTeachingHistory();
+      toast.success("Teaching history entry added");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to add teaching history entry";
+      toast.error(message);
+      throw error;
+    }
+  }
+
+  async function handleUpdateTeachingHistory(
+    id: string,
+    data: UpdateTeachingHistoryInput
+  ) {
+    try {
+      await updateTeachingHistory({ id, data });
+      await mutateTeachingHistory();
+      toast.success("Teaching history entry updated");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to update teaching history entry";
+      toast.error(message);
+      throw error;
+    }
+  }
+
+  async function handleDeleteTeachingHistory(id: string) {
+    try {
+      await deleteTeachingHistory(id);
+      await mutateTeachingHistory();
+      toast.success("Teaching history entry deleted");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to delete teaching history entry";
+      toast.error(message);
+      throw error;
+    }
   }
 
   function addItem(
@@ -611,6 +677,18 @@ export default function ProfilePage() {
               )}
             </CardContent>
           </Card>
+
+          <TeachingHistorySection
+            items={teachingHistory}
+            isLoading={teachingHistoryLoading}
+            canEdit={canEdit}
+            isSubmitting={
+              isCreatingHistory || isUpdatingHistory || isDeletingHistory
+            }
+            onCreate={handleCreateTeachingHistory}
+            onUpdate={handleUpdateTeachingHistory}
+            onDelete={handleDeleteTeachingHistory}
+          />
         </div>
 
         {/* Right Column */}

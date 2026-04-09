@@ -151,13 +151,13 @@ This project uses **Prisma** with a **Neon PostgreSQL** database. The database c
 
 ### Prerequisites
 
-1. Ensure you have the Neon database URL in your `.env` file:
+1.  `.env` file:
 
    ```
    DATABASE_URL="postgresql://user:password@host/neondb?sslmode=require"
    ```
 
-2. Install dependencies (if not already done):
+2. Install dependencies :
    ```bash
    npm install
    ```
