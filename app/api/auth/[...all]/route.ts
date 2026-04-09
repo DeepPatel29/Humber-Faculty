@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { isMockAuthAllowed } from "@/lib/auth-helpers";
+import {
+  hasBetterAuthSessionCookie,
+  isMockAuthAllowed,
+} from "@/lib/auth-helpers";
 
 export async function GET(request: NextRequest) {
-  if (auth) {
+  // If Better Auth has a session cookie, resolve get-session from Better Auth first.
+  // Otherwise a stale faculty_session (e.g. after logging in as admin then as faculty via email/password)
+  // would incorrectly report ADMIN for everyone.
+  if (auth && hasBetterAuthSessionCookie(request)) {
     try {
       return await auth.handler(request);
     } catch {
@@ -20,6 +26,7 @@ export async function GET(request: NextRequest) {
           name?: string;
           email?: string;
           role?: string;
+          facultyId?: string;
         };
         return NextResponse.json({
           session: {
@@ -28,13 +35,25 @@ export async function GET(request: NextRequest) {
             expiresAt: new Date(Date.now() + 86400000).toISOString(),
           },
           user: {
-            ...userData,
+            id: userData.id,
+            name: userData.name ?? "User",
+            email: userData.email ?? "",
+            image: null,
             role: userData.role || "STAFF",
+            facultyId: userData.facultyId,
           },
         });
       } catch {
         return NextResponse.json({ session: null, user: null });
       }
+    }
+  }
+
+  if (auth) {
+    try {
+      return await auth.handler(request);
+    } catch {
+      /* fall through */
     }
   }
 

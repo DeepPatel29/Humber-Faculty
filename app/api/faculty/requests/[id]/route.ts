@@ -27,8 +27,8 @@ function scheduleToSummary(
     dayOfWeek: string;
     startTime: string;
     endTime: string;
-    course: { code: string; name: string };
-    room: { building: string; name: string };
+    course: { code: string; name: string } | null;
+    room: { building: string; name: string } | null;
     faculty: { user: { name: string } };
   } | null
 ): {
@@ -44,12 +44,12 @@ function scheduleToSummary(
   if (!s) return null;
   return {
     id: s.id,
-    courseCode: s.course.code,
-    courseName: s.course.name,
+    courseCode: s.course?.code ?? "—",
+    courseName: s.course?.name ?? "—",
     dayOfWeek: s.dayOfWeek,
     startTime: s.startTime,
     endTime: s.endTime,
-    roomLabel: `${s.room.building} ${s.room.name}`,
+    roomLabel: s.room ? `${s.room.building} ${s.room.name}` : "—",
     ownerName: s.faculty.user.name,
   };
 }

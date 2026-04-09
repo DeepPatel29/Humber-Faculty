@@ -107,10 +107,18 @@ export function SwapRequestDialog({
         </DialogHeader>
         <form onSubmit={form.handleSubmit(handleSubmit)}>
           <FieldGroup className="py-4">
+            {classesList.length === 0 && (
+              <p className="text-sm text-muted-foreground rounded-md border border-border bg-muted/40 p-3">
+                No active class assignments were found for your account. The list includes every
+                scheduled slot (even if course or room is not filled in yet). If this stays empty,
+                scheduling may not have assigned you sections, or your login may not be linked to a
+                faculty profile.
+              </p>
+            )}
             <Field>
               <FieldLabel>My Class</FieldLabel>
               <Select
-                value={watch("myScheduleId")}
+                value={watch("myScheduleId") || undefined}
                 onValueChange={(v) => setValue("myScheduleId", v)}
               >
                 <SelectTrigger>
@@ -124,7 +132,8 @@ export function SwapRequestDialog({
                   ) : (
                     classesList.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.courseCode} - {c.dayOfWeek} {c.startTime}
+                        {c.courseCode} · {c.dayOfWeek} {c.startTime}–{c.endTime}
+                        {c.room ? ` · ${c.room}` : ""}
                       </SelectItem>
                     ))
                   )}
@@ -138,7 +147,7 @@ export function SwapRequestDialog({
             <Field>
               <FieldLabel>Colleague</FieldLabel>
               <Select
-                value={watch("targetFacultyId")}
+                value={watch("targetFacultyId") || undefined}
                 onValueChange={(v) => setValue("targetFacultyId", v)}
               >
                 <SelectTrigger>
@@ -193,7 +202,14 @@ export function SwapRequestDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={
+                isSubmitting ||
+                classesList.length === 0 ||
+                !watch("myScheduleId")
+              }
+            >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Submit Request
             </Button>
@@ -273,10 +289,19 @@ export function RescheduleRequestDialog({
         </DialogHeader>
         <form onSubmit={form.handleSubmit(handleSubmit)}>
           <FieldGroup className="py-4">
+            {classesList.length === 0 && (
+              <p className="text-sm text-muted-foreground rounded-md border border-border bg-muted/40 p-3">
+                Nothing listed usually means you have no active teaching assignments in the database
+                yet, or your account is not linked to a faculty record. If options show{' '}
+                <span className="font-medium text-foreground">No course linked</span> or{' '}
+                <span className="font-medium text-foreground">No room</span>, you can still select
+                that row—it is a real scheduled slot with incomplete course or room data.
+              </p>
+            )}
             <Field>
               <FieldLabel>Class to Reschedule</FieldLabel>
               <Select
-                value={watch("scheduleId")}
+                value={watch("scheduleId") || undefined}
                 onValueChange={(v) => setValue("scheduleId", v)}
               >
                 <SelectTrigger>
@@ -290,7 +315,8 @@ export function RescheduleRequestDialog({
                   ) : (
                     classesList.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.courseCode} - {c.dayOfWeek} {c.startTime}
+                        {c.courseCode} · {c.dayOfWeek} {c.startTime}–{c.endTime}
+                        {c.room ? ` · ${c.room}` : ""}
                       </SelectItem>
                     ))
                   )}
@@ -336,7 +362,14 @@ export function RescheduleRequestDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={
+                isSubmitting ||
+                classesList.length === 0 ||
+                !watch("scheduleId")
+              }
+            >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Submit Request
             </Button>

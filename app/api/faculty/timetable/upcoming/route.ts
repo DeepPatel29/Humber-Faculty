@@ -32,8 +32,11 @@ export async function GET(request: NextRequest) {
 					take: limit,
 				});
 
-				return successResponse(
-					schedules.map((s) => ({
+				const rows = schedules
+					.filter((s): s is typeof s & { course: NonNullable<typeof s.course>; room: NonNullable<typeof s.room> } =>
+						Boolean(s.course && s.room)
+					)
+					.map((s) => ({
 						id: s.id,
 						courseCode: s.course.code,
 						courseName: s.course.name,
@@ -46,8 +49,8 @@ export async function GET(request: NextRequest) {
 						section: s.section,
 						program: s.program,
 						semester: s.semester,
-					}))
-				);
+					}));
+				return successResponse(rows);
 			}
 		} catch (e) {
 			console.error("Upcoming timetable error:", e);

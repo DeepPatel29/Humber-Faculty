@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   Users,
   FileText,
-  Building2,
   Shield,
   LogOut,
   Loader2,
@@ -21,7 +20,6 @@ const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/requests", label: "Requests", icon: FileText },
   { href: "/admin/faculty", label: "Faculty", icon: Users },
-  { href: "/admin/departments", label: "Departments", icon: Building2 },
 ];
 
 export default function AdminLayout({

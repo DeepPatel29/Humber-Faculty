@@ -23,6 +23,11 @@ import {
   getClassOptions,
   getColleagueOptions,
   getDepartmentOptions,
+  listFacultyResources,
+  getFacultyResource,
+  createFacultyResource,
+  updateFacultyResource,
+  deleteFacultyResource,
   type TimetableParams,
   type RequestsParams,
   type NotificationsParams,
@@ -33,6 +38,8 @@ import type {
   CreateSwapRequestInput,
   CreateRescheduleRequestInput,
   CreateLeaveRequestInput,
+  CreateFacultyResourceInput,
+  UpdateFacultyResourceInput,
 } from "@/lib/validations/faculty";
 
 // ============================================================================
@@ -371,5 +378,83 @@ export function useDepartmentOptions(config?: SWRConfiguration) {
       return data;
     },
     { ...defaultConfig, ...config }
+  );
+}
+
+// ============================================================================
+// Admin: canonical Faculty CRUD (GET /api/faculty, /api/faculty/[id])
+// ============================================================================
+
+export function useFacultyAdminList(page: number, limit = 20, config?: SWRConfiguration) {
+  return useSWR(
+    ["faculty-admin-list", page, limit],
+    async () => {
+      const res = await listFacultyResources({ page, limit });
+      if (!res.success || !res.data) {
+        throw new Error(res.error || "Failed to list faculty");
+      }
+      return res.data;
+    },
+    { ...defaultConfig, ...config }
+  );
+}
+
+export function useFacultyAdminDetail(id: string | null, config?: SWRConfiguration) {
+  return useSWR(
+    id ? ["faculty-admin-detail", id] : null,
+    async () => {
+      const res = await getFacultyResource(id!);
+      if (!res.success || !res.data) {
+        throw new Error(res.error || "Failed to load faculty");
+      }
+      return res.data.faculty;
+    },
+    { ...defaultConfig, ...config }
+  );
+}
+
+export function useCreateFacultyResource() {
+  return useSWRMutation(
+    "faculty-admin-create",
+    async (_key: string, { arg }: { arg: CreateFacultyResourceInput }) => {
+      const res = await createFacultyResource(arg);
+      if (!res.success || !res.data) {
+        throw new Error(res.error || "Failed to create faculty");
+      }
+      await globalMutate((k) => Array.isArray(k) && k[0] === "faculty-admin-list");
+      return res.data;
+    }
+  );
+}
+
+export function useUpdateFacultyResource() {
+  return useSWRMutation(
+    "faculty-admin-update",
+    async (
+      _key: string,
+      { arg }: { arg: { id: string; data: UpdateFacultyResourceInput } }
+    ) => {
+      const res = await updateFacultyResource(arg.id, arg.data);
+      if (!res.success || !res.data) {
+        throw new Error(res.error || "Failed to update faculty");
+      }
+      await globalMutate((k) => Array.isArray(k) && k[0] === "faculty-admin-list");
+      await globalMutate(["faculty-admin-detail", arg.id]);
+      return res.data;
+    }
+  );
+}
+
+export function useDeleteFacultyResource() {
+  return useSWRMutation(
+    "faculty-admin-delete",
+    async (_key: string, { arg }: { arg: string }) => {
+      const res = await deleteFacultyResource(arg);
+      if (!res.success || !res.data) {
+        throw new Error(res.error || "Failed to delete faculty");
+      }
+      await globalMutate((k) => Array.isArray(k) && k[0] === "faculty-admin-list");
+      return res.data;
+    }
   );
 }

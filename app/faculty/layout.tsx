@@ -15,7 +15,6 @@ import {
   Loader2,
   Shield,
   Eye,
-  Settings,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useRoleAuth } from "@/hooks/use-role-auth";
@@ -37,6 +36,7 @@ export default function FacultyLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, isLoading, role, isAdmin, isScheduler, logout } = useRoleAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -53,10 +53,24 @@ export default function FacultyLayout({
     fetchUnread();
   }, []);
 
+  useEffect(() => {
+    if (isLoading || user) return;
+    const callback = pathname || "/faculty/dashboard";
+    router.replace("/login?callbackUrl=" + encodeURIComponent(callback));
+  }, [isLoading, user, router, pathname]);
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }

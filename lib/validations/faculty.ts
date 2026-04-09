@@ -252,10 +252,21 @@ export const createFacultyResourceSchema = z.object({
   departmentId: uuidSchema,
   employeeId: z.string().min(1).max(64),
   designation: z.string().min(1).max(200),
-  joiningDate: z.coerce.date().optional(),
+  joiningDate: z
+    .union([z.date(), z.string()])
+    .optional()
+    .transform((v): Date | undefined => {
+      if (v === undefined) return undefined;
+      if (v instanceof Date) return v;
+      const t = v.trim();
+      if (!t) return undefined;
+      const d = t.includes("T") ? new Date(t) : new Date(`${t}T12:00:00.000Z`);
+      return Number.isNaN(d.getTime()) ? undefined : d;
+    }),
 });
 
 export type CreateFacultyResourceInput = z.infer<typeof createFacultyResourceSchema>;
+export type CreateFacultyResourceFormValues = z.input<typeof createFacultyResourceSchema>;
 
 export const updateFacultyResourceSchema = z.object({
   departmentId: uuidSchema.optional(),

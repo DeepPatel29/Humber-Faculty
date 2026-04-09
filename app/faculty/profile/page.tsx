@@ -29,7 +29,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { UpdateProfileInput } from "@/lib/validations/faculty";
+import { updateProfileSchema, type UpdateProfileInput } from "@/lib/validations/faculty";
 
 interface ProfileFormState {
   fullName: string;
@@ -161,7 +161,14 @@ export default function ProfilePage() {
       if (designation.trim()) payload.designation = designation.trim();
       if (departmentId) payload.departmentId = departmentId;
 
-      await updateProfile(payload as UpdateProfileInput);
+      const parsed = updateProfileSchema.safeParse(payload);
+      if (!parsed.success) {
+        const msg = parsed.error.issues.map((i) => i.message).join(" · ");
+        toast.error(msg || "Please fix validation errors");
+        return;
+      }
+
+      await updateProfile(parsed.data);
       toast.success("Profile updated successfully");
       setIsEditing(false);
       mutate();

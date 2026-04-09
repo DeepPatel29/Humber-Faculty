@@ -16,6 +16,8 @@ import type {
   CreateSwapRequestInput,
   CreateRescheduleRequestInput,
   CreateLeaveRequestInput,
+  CreateFacultyResourceInput,
+  UpdateFacultyResourceInput,
 } from "@/lib/validations/faculty";
 
 // ============================================================================
@@ -418,4 +420,103 @@ export async function getDepartmentOptions(): Promise<ApiResponse<DepartmentOpti
       : [];
 
   return { success: true, data: departments };
+}
+
+// ============================================================================
+// Canonical Faculty CRUD (admin / directory)
+// ============================================================================
+
+export interface FacultyDirectoryRow {
+  id: string;
+  userId: string;
+  departmentId: string;
+  employeeId: string;
+  designation: string;
+  status: string;
+  joiningDate: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+  department: {
+    id: string;
+    name: string;
+    code: string;
+    description?: string | null;
+  };
+}
+
+export interface FacultyListPayload {
+  faculty: FacultyDirectoryRow[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface PreferredSubjectRow {
+  id: string;
+  subjectName: string;
+  createdAt: string;
+}
+
+export interface FacultyDetailPayload {
+  id: string;
+  userId: string;
+  departmentId: string;
+  employeeId: string;
+  designation: string;
+  status: string;
+  joiningDate: string;
+  preferredSubjects: PreferredSubjectRow[];
+  user: FacultyDirectoryRow["user"];
+  department: FacultyDirectoryRow["department"];
+  profile: FacultyProfile | null;
+}
+
+export async function listFacultyResources(params?: {
+  page?: number;
+  limit?: number;
+}): Promise<ApiResponse<FacultyListPayload>> {
+  const page = params?.page ?? 1;
+  const limit = params?.limit ?? 20;
+  const qs = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  return fetchApi<FacultyListPayload>(`/api/faculty?${qs.toString()}`);
+}
+
+export async function getFacultyResource(
+  id: string
+): Promise<ApiResponse<{ faculty: FacultyDetailPayload }>> {
+  return fetchApi<{ faculty: FacultyDetailPayload }>(`/api/faculty/${id}`);
+}
+
+export async function createFacultyResource(
+  data: CreateFacultyResourceInput
+): Promise<ApiResponse<{ faculty: FacultyDetailPayload }>> {
+  return fetchApi<{ faculty: FacultyDetailPayload }>("/api/faculty", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateFacultyResource(
+  id: string,
+  data: UpdateFacultyResourceInput
+): Promise<ApiResponse<{ faculty: FacultyDetailPayload }>> {
+  return fetchApi<{ faculty: FacultyDetailPayload }>(`/api/faculty/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteFacultyResource(
+  id: string
+): Promise<ApiResponse<{ deleted: boolean; id: string }>> {
+  return fetchApi<{ deleted: boolean; id: string }>(`/api/faculty/${id}`, {
+    method: "DELETE",
+  });
 }

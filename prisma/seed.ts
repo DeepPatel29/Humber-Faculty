@@ -41,25 +41,6 @@ async function main() {
 		});
 	}
 
-	let semester = await prisma.semester.findFirst();
-	if (!semester) {
-		semester = await prisma.semester.create({
-			data: { name: "Default academic period (seed)" },
-		});
-	}
-
-	const allCourses = await prisma.course.findMany();
-	for (const courseRow of allCourses) {
-		const existingTerm = await prisma.term.findFirst({
-			where: { courseId: courseRow.id, semesterId: semester.id },
-		});
-		if (!existingTerm) {
-			await prisma.term.create({
-				data: { courseId: courseRow.id, semesterId: semester.id },
-			});
-		}
-	}
-
 	const rooms = [
 		{ name: "LH-101", building: "Engineering", floor: 1, capacity: 120, type: "lecture_hall" },
 		{ name: "Lab-201", building: "Engineering", floor: 2, capacity: 40, type: "lab" },
