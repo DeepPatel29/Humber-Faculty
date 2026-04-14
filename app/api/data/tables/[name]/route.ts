@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!session) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -22,25 +22,24 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
     const offset = (page - 1) * limit;
 
-    // Validate table name exists
     const tableCheck = await sql`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' 
-        AND table_type = 'BASE TABLE'
-        AND table_name = ${tableName}
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+      AND table_type = 'BASE TABLE'
+      AND table_name = ${tableName}
     `;
 
-    if (tableCheck.length === 0) {
+    const tableCheckRows = tableCheck as { table_name: string }[];
+    if (tableCheckRows.length === 0) {
       return NextResponse.json(
         { success: false, error: "Table not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    // Get column information
     const columns = await sql`
-      SELECT 
+      SELECT
         column_name,
         data_type,
         is_nullable,
@@ -50,24 +49,31 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       ORDER BY ordinal_position
     `;
 
-    // Get table data with pagination
+    const columnRows = columns as {
+      column_name: string;
+      data_type: string;
+      is_nullable: string;
+      column_default: string | null;
+    }[];
+
     const data = await sql.unsafe(`
       SELECT * FROM "${tableName}"
       ORDER BY 1
       LIMIT ${limit} OFFSET ${offset}
     `);
 
-    // Get total count
     const countResult = await sql`
       SELECT COUNT(*) as count FROM ${sql.unsafe(`"${tableName}"`)}
     `;
-    const totalRows = parseInt(countResult[0].count);
+
+    const countRows = countResult as { count: string }[];
+    const totalRows = parseInt(countRows[0].count);
 
     return NextResponse.json({
       success: true,
       data: {
         tableName,
-        columns: columns.map((col) => ({
+        columns: columnRows.map((col) => ({
           name: col.column_name,
           type: col.data_type,
           nullable: col.is_nullable === "YES",
@@ -86,7 +92,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     console.error("Error fetching table data:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch table data" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
