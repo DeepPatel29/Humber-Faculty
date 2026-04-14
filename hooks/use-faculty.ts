@@ -55,6 +55,8 @@ import type {
 const defaultConfig: SWRConfiguration = {
   revalidateOnFocus: false,
   dedupingInterval: 5000,
+  errorRetryCount: 2,
+  errorRetryInterval: 3000,
 };
 
 // ============================================================================
@@ -71,7 +73,7 @@ export function useDashboard(config?: SWRConfiguration) {
       }
       return res.data;
     },
-    { ...defaultConfig, ...config }
+    { ...defaultConfig, refreshInterval: 60000, ...config }
   );
 }
 

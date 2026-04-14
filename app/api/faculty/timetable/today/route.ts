@@ -7,6 +7,7 @@ import {
 } from "@/lib/auth-helpers";
 import { db, ensureFacultyExists } from "@/lib/db";
 import { activeFacultyScheduleWhere } from "@/lib/faculty-schedule-queries";
+import { resolveCourseMap } from "@/lib/course-lookup";
 import { internalErrorResponse, successResponse } from "@/lib/api-response";
 
 const WEEK_DAYS: DayOfWeek[] = [
@@ -35,9 +36,11 @@ export async function GET(_request: NextRequest) {
 
 				const todayClasses = await db.facultySchedule.findMany({
 					where: activeFacultyScheduleWhere(faculty.id, { dayOfWeek: todayDay }),
-					include: { course: true, room: true },
+					include: { room: true },
 					orderBy: { startTime: "asc" },
 				});
+
+				const courseMap = await resolveCourseMap(todayClasses.map((s) => s.courseId));
 
 				return successResponse(
 					todayClasses.map((s) => ({
@@ -46,8 +49,8 @@ export async function GET(_request: NextRequest) {
 						courseId: s.courseId,
 						roomId: s.roomId,
 						termId: s.termId,
-						courseName: s.course?.name || "Unknown",
-						courseCode: s.course?.code || "",
+						courseName: (s.courseId && courseMap.get(s.courseId)?.name) || "Unknown",
+						courseCode: (s.courseId && courseMap.get(s.courseId)?.code) || "",
 						dayOfWeek: s.dayOfWeek,
 						startTime: s.startTime,
 						endTime: s.endTime,

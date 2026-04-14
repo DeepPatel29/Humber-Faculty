@@ -30,7 +30,10 @@ export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 // ============================================================================
 
 export function successResponse<T>(data: T, status = 200): NextResponse<ApiSuccessResponse<T>> {
-  return NextResponse.json({ success: true, data, error: null }, { status });
+  return NextResponse.json({ success: true, data, error: null }, {
+    status,
+    headers: { "Cache-Control": "private, max-age=5, stale-while-revalidate=10" },
+  });
 }
 
 export function createdResponse<T>(data: T): NextResponse<ApiSuccessResponse<T>> {

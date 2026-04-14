@@ -6,6 +6,7 @@ import {
 } from "@/lib/auth-helpers";
 import { db, ensureFacultyExists } from "@/lib/db";
 import { activeFacultyScheduleWhere } from "@/lib/faculty-schedule-queries";
+import { resolveCourseMap } from "@/lib/course-lookup";
 import { internalErrorResponse, successResponse } from "@/lib/api-response";
 
 export async function GET(request: NextRequest) {
@@ -23,11 +24,26 @@ export async function GET(request: NextRequest) {
 				const { searchParams } = new URL(request.url);
 				const courseCode = searchParams.get("courseCode");
 
+				const where = activeFacultyScheduleWhere(faculty.id);
+
+				if (courseCode) {
+					const matching = await db.sharedCourse.findMany({
+						where: { code: courseCode },
+						select: { id: true },
+					});
+					const matchingIds = matching.map((c) => String(c.id));
+					if (matchingIds.length > 0) {
+						(where as Record<string, unknown>).courseId = { in: matchingIds };
+					}
+				}
+
 				const schedules = await db.facultySchedule.findMany({
-					where: activeFacultyScheduleWhere(faculty.id, courseCode ? { course: { code: courseCode } } : {}),
-					include: { course: true, room: true },
+					where,
+					include: { room: true },
 					orderBy: { startTime: "asc" },
 				});
+
+				const courseMap = await resolveCourseMap(schedules.map((s) => s.courseId));
 
 				return successResponse(
 					schedules.map((s) => ({
@@ -36,8 +52,8 @@ export async function GET(request: NextRequest) {
 						courseId: s.courseId,
 						roomId: s.roomId,
 						termId: s.termId,
-						courseName: s.course?.name || "Unknown",
-						courseCode: s.course?.code || "",
+						courseName: (s.courseId && courseMap.get(s.courseId)?.name) || "Unknown",
+						courseCode: (s.courseId && courseMap.get(s.courseId)?.code) || "",
 						dayOfWeek: s.dayOfWeek,
 						startTime: s.startTime,
 						endTime: s.endTime,

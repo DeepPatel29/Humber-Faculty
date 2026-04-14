@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useRoleAuth } from "@/hooks/use-role-auth";
+import { useUnreadCount } from "@/hooks/use-faculty";
 import { ROLE_INFO } from "@/lib/types/roles";
 import { getInitials } from "@/lib/utils";
 
@@ -38,20 +39,7 @@ export default function FacultyLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { user, isLoading, role, isAdmin, isScheduler, logout } = useRoleAuth();
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    async function fetchUnread() {
-      try {
-        const res = await fetch("/api/faculty/notifications/unread-count");
-        if (res.ok) {
-          const data = await res.json();
-          setUnreadCount(data?.data?.count || 0);
-        }
-      } catch {}
-    }
-    fetchUnread();
-  }, []);
+  const { data: unreadCount = 0 } = useUnreadCount();
 
   useEffect(() => {
     if (isLoading || user) return;

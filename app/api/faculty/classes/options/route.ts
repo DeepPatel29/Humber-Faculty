@@ -6,6 +6,7 @@ import {
 } from "@/lib/auth-helpers";
 import { db, ensureFacultyExists } from "@/lib/db";
 import { activeFacultyScheduleWhere } from "@/lib/faculty-schedule-queries";
+import { resolveCourseMap } from "@/lib/course-lookup";
 import { internalErrorResponse, successResponse } from "@/lib/api-response";
 
 export async function GET(request: NextRequest) {
@@ -22,20 +23,17 @@ export async function GET(request: NextRequest) {
 			if (faculty) {
 				const schedules = await db.facultySchedule.findMany({
 					where: activeFacultyScheduleWhere(faculty.id),
-					include: {
-						course: true,
-						room: true,
-					},
+					include: { room: true },
 					orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
 				});
 
-				// Include rows even when course or room is missing (common with partial scheduling data).
-				// Otherwise the dropdown is empty and forms fail with "Invalid UUID" on empty scheduleId.
+				const courseMap = await resolveCourseMap(schedules.map((s) => s.courseId));
+
 				const classOptions = schedules.map((s) => ({
 					id: s.id,
 					courseId: s.courseId ?? "",
-					courseName: s.course?.name ?? "No course linked",
-					courseCode: s.course?.code ?? "—",
+					courseName: (s.courseId && courseMap.get(s.courseId)?.name) ?? "No course linked",
+					courseCode: (s.courseId && courseMap.get(s.courseId)?.code) ?? "\u2014",
 					dayOfWeek: s.dayOfWeek,
 					startTime: s.startTime,
 					endTime: s.endTime,

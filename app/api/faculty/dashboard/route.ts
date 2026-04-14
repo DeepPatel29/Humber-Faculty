@@ -7,6 +7,7 @@ import {
 } from "@/lib/auth-helpers";
 import { db, ensureFacultyExists } from "@/lib/db";
 import { activeFacultyScheduleWhere } from "@/lib/faculty-schedule-queries";
+import { resolveCourseMap } from "@/lib/course-lookup";
 import { internalErrorResponse, successResponse } from "@/lib/api-response";
 
 const WEEK_DAYS: DayOfWeek[] = [
@@ -33,28 +34,30 @@ export async function GET(_request: NextRequest) {
 			if (faculty) {
 				const todayDay = WEEK_DAYS[new Date().getDay()];
 
-				const todaySchedule = await db.facultySchedule.findMany({
-					where: activeFacultyScheduleWhere(faculty.id, { dayOfWeek: todayDay }),
-					include: { course: true, room: true },
-					orderBy: { startTime: "asc" },
-				});
+				const [todaySchedule, allSchedules, pendingRequests, notifications] = await Promise.all([
+					db.facultySchedule.findMany({
+						where: activeFacultyScheduleWhere(faculty.id, { dayOfWeek: todayDay }),
+						include: { room: true },
+						orderBy: { startTime: "asc" },
+					}),
+					db.facultySchedule.findMany({
+						where: activeFacultyScheduleWhere(faculty.id),
+						include: { room: true },
+						orderBy: { startTime: "asc" },
+						take: 6,
+					}),
+					db.facultyRequest.count({
+						where: { facultyId: faculty.id, status: "PENDING" },
+					}),
+					db.facultyNotification.findMany({
+						where: { facultyId: faculty.id },
+						orderBy: { createdAt: "desc" },
+						take: 4,
+					}),
+				]);
 
-				const allSchedules = await db.facultySchedule.findMany({
-					where: activeFacultyScheduleWhere(faculty.id),
-					include: { course: true, room: true },
-					orderBy: { startTime: "asc" },
-					take: 6,
-				});
-
-				const pendingRequests = await db.facultyRequest.count({
-					where: { facultyId: faculty.id, status: "PENDING" },
-				});
-
-				const notifications = await db.facultyNotification.findMany({
-					where: { facultyId: faculty.id },
-					orderBy: { createdAt: "desc" },
-					take: 4,
-				});
+				const allItems = [...todaySchedule, ...allSchedules];
+				const courseMap = await resolveCourseMap(allItems.map((s) => s.courseId));
 
 				const formatSchedule = (items: typeof allSchedules) =>
 					items.map((s) => ({
@@ -63,8 +66,8 @@ export async function GET(_request: NextRequest) {
 						courseId: s.courseId,
 						roomId: s.roomId,
 						termId: s.termId,
-						courseName: s.course?.name || "Unknown",
-						courseCode: s.course?.code || "",
+						courseName: (s.courseId && courseMap.get(s.courseId)?.name) || "Unknown",
+						courseCode: (s.courseId && courseMap.get(s.courseId)?.code) || "",
 						dayOfWeek: s.dayOfWeek,
 						startTime: s.startTime,
 						endTime: s.endTime,
