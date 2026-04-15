@@ -39,7 +39,6 @@ export async function GET(request: NextRequest) {
 
 				const schedules = await db.facultySchedule.findMany({
 					where,
-					include: { room: true },
 					orderBy: { startTime: "asc" },
 				});
 				const sql = (await import("@/lib/db")).getSql();
@@ -70,20 +69,22 @@ export async function GET(request: NextRequest) {
 					class_type: string | null;
 				}>;
 
-				const courseMap = await resolveCourseMap(schedules.map((s) => s.courseId));
+				const courseMap = await resolveCourseMap(
+					schedules.map((s) => s.sharedCourseId).filter((id): id is string => Boolean(id))
+				);
 				const baseItems = schedules.map((s) => ({
 						id: s.id,
 						facultyId: s.facultyId,
-						courseId: s.courseId,
-						roomId: s.roomId,
-						termId: s.termId,
-						courseName: (s.courseId && courseMap.get(s.courseId)?.name) || "Unknown",
-						courseCode: (s.courseId && courseMap.get(s.courseId)?.code) || "",
+						courseId: s.sharedCourseId,
+						roomId: s.facilityRoomId,
+						termId: s.schedulerTermId,
+						courseName: (s.sharedCourseId && courseMap.get(s.sharedCourseId)?.name) || "Unknown",
+						courseCode: (s.sharedCourseId && courseMap.get(s.sharedCourseId)?.code) || "",
 						dayOfWeek: s.dayOfWeek,
 						startTime: s.startTime,
 						endTime: s.endTime,
-						roomName: s.room?.name || "TBA",
-						building: s.room?.building || "",
+						roomName: "TBA",
+						building: "",
 						type: s.type,
 						section: s.section || "",
 						program: s.program || "",

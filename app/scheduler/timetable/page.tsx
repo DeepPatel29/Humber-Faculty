@@ -17,13 +17,32 @@ const DAYS = [
   DayOfWeek.FRIDAY,
 ];
 
+interface FacultySummary {
+  id: string;
+  name: string;
+  designation: string;
+  schedules: TimetableSlot[];
+  acceptedAssignments: TimetableSlot[];
+}
+
+interface TimetableSlot {
+  id: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  courseCode: string;
+  courseName: string;
+  roomLabel: string;
+  source: "BASE_TIMETABLE" | "ACCEPTED_REQUEST";
+}
+
 export default function SchedulerTimetablePage() {
-  const { data: facultyData, isLoading: facultyLoading } = useSWR(
-    "/api/admin/faculty",
+  const { data, isLoading } = useSWR(
+    "/api/scheduler/timetable",
     fetcher
   );
 
-  const faculty = facultyData?.data?.faculty || [];
+  const faculty: FacultySummary[] = data?.data?.faculty || [];
 
   return (
     <div className="space-y-6">
@@ -36,13 +55,25 @@ export default function SchedulerTimetablePage() {
         </p>
       </div>
 
-      {facultyLoading ? (
+      {isLoading ? (
         <div className="flex justify-center py-8">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : (
         <div className="space-y-6">
-          {faculty.map((f: any) => (
+          {faculty.map((f) => {
+            const allSlots = [...f.schedules, ...f.acceptedAssignments];
+            const slotsByDay = DAYS.reduce<Record<string, TimetableSlot[]>>(
+              (acc, day) => {
+                acc[day] = allSlots
+                  .filter((slot) => (slot.dayOfWeek || "").toUpperCase() === day)
+                  .sort((a, b) => a.startTime.localeCompare(b.startTime));
+                return acc;
+              },
+              {}
+            );
+
+            return (
             <Card key={f.id}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
@@ -53,13 +84,11 @@ export default function SchedulerTimetablePage() {
                     <div>
                       <CardTitle className="text-lg">{f.name}</CardTitle>
                       <p className="text-sm text-muted-foreground">
-                        {f.designation} • {f.department}
+                        {f.designation}
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-green-600">
-                    {f.role}
-                  </Badge>
+                  <Badge variant="outline" className="text-green-600">FACULTY</Badge>
                 </div>
               </CardHeader>
               <CardContent>
@@ -70,14 +99,51 @@ export default function SchedulerTimetablePage() {
                     </div>
                   ))}
                 </div>
-                <div className="text-center text-sm text-muted-foreground py-4 border rounded-lg">
-                  <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>Schedule data will appear here</p>
-                  <p className="text-xs">Based on faculty availability</p>
+                <div className="grid grid-cols-5 gap-2">
+                  {DAYS.map((day) => (
+                    <div key={day} className="min-h-28 rounded-lg border p-2 space-y-2">
+                      {slotsByDay[day].length > 0 ? (
+                        slotsByDay[day].map((slot) => (
+                          <div key={slot.id} className="rounded-md bg-muted/50 p-2 text-left">
+                            <p className="text-xs font-medium leading-tight">
+                              {slot.courseCode || "COURSE"}
+                            </p>
+                            <p className="text-xs text-muted-foreground leading-tight">
+                              {slot.courseName}
+                            </p>
+                            <p className="mt-1 text-[11px] text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {slot.startTime} - {slot.endTime}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                              <Building2 className="h-3 w-3" />
+                              {slot.roomLabel || "TBA"}
+                            </p>
+                            {slot.source === "ACCEPTED_REQUEST" && (
+                              <p className="mt-1 text-[10px] font-medium text-green-600">
+                                Accepted request
+                              </p>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex h-full min-h-20 items-center justify-center text-[11px] text-muted-foreground">
+                          No class
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
+                {allSlots.length === 0 && (
+                  <div className="mt-3 text-center text-xs text-muted-foreground">
+                    <Calendar className="h-4 w-4 inline-block mr-1 -mt-0.5 opacity-70" />
+                    No timetable entries for this faculty yet
+                  </div>
+                )}
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
 
           {faculty.length === 0 && (
             <Card>

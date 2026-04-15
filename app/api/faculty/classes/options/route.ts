@@ -23,21 +23,27 @@ export async function GET(request: NextRequest) {
 			if (faculty) {
 				const schedules = await db.facultySchedule.findMany({
 					where: activeFacultyScheduleWhere(faculty.id),
-					include: { room: true },
 					orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
 				});
 
-				const courseMap = await resolveCourseMap(schedules.map((s) => s.courseId));
+				const courseMap = await resolveCourseMap(
+					schedules
+						.map((s) => s.sharedCourseId)
+						.filter((id): id is string => Boolean(id))
+				);
 
 				const classOptions = schedules.map((s) => ({
 					id: s.id,
-					courseId: s.courseId ?? "",
-					courseName: (s.courseId && courseMap.get(s.courseId)?.name) ?? "No course linked",
-					courseCode: (s.courseId && courseMap.get(s.courseId)?.code) ?? "\u2014",
+					courseId: s.sharedCourseId ?? "",
+					courseName:
+						(s.sharedCourseId && courseMap.get(s.sharedCourseId)?.name) ??
+						"No course linked",
+					courseCode:
+						(s.sharedCourseId && courseMap.get(s.sharedCourseId)?.code) ?? "\u2014",
 					dayOfWeek: s.dayOfWeek,
 					startTime: s.startTime,
 					endTime: s.endTime,
-					room: s.room ? `${s.room.building} ${s.room.name}` : "No room",
+					room: s.facilityRoomId ? "Room assigned" : "No room",
 				}));
 
 				return successResponse({ classes: classOptions });
