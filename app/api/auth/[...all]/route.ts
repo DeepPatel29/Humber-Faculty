@@ -114,9 +114,12 @@ export async function POST(request: NextRequest) {
   if (url.pathname.includes("sign-in")) {
     let role = "STAFF";
     const emailStr = typeof body.email === "string" ? body.email : "";
-    if (emailStr.includes("admin")) role = "ADMIN";
-    else if (emailStr.includes("scheduler")) role = "SCHEDULER";
-    else if (emailStr.includes("student")) role = "STUDENT";
+    const lowerEmail = emailStr.toLowerCase();
+    const rawName = typeof body.name === "string" ? body.name.trim() : "";
+    const lowerName = rawName.toLowerCase();
+    if (lowerEmail.includes("admin")) role = "ADMIN";
+    else if (lowerEmail.includes("scheduler")) role = "SCHEDULER";
+    else if (lowerEmail.includes("student")) role = "STUDENT";
 
     const userId = generateUserIdFromEmail(emailStr || `user_${Date.now()}`);
 
@@ -127,10 +130,10 @@ export async function POST(request: NextRequest) {
       displayName = "Scheduler User";
     } else if (role === "STUDENT") {
       displayName = "Student User";
-    } else if (emailStr.includes("john.smith") || String(body.name).toLowerCase().includes("john smith")) {
+    } else if (lowerEmail.includes("john.smith") || lowerName.includes("john smith")) {
       displayName = "Dr. John Smith";
-    } else if (typeof body.name === "string" && body.name) {
-      displayName = body.name;
+    } else if (rawName) {
+      displayName = rawName;
     }
 
     const userData = {

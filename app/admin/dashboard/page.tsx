@@ -1,14 +1,54 @@
 "use client";
 
-import { useEffect } from "react";
+import useSWR from "swr";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Users, Building2, CheckCircle, XCircle, Clock } from "lucide-react";
+import { FileText, Users, Building2, CheckCircle, Clock, Loader2 } from "lucide-react";
 import { useRoleAuth } from "@/hooks/use-role-auth";
+
+interface AdminDashboardData {
+  pendingRequests: number;
+  pendingBreakdown: {
+    swap: number;
+    reschedule: number;
+    leave: number;
+  };
+  totalFaculty: number;
+  totalDepartments: number;
+  approvedThisWeek: number;
+  recentRequests: Array<{
+    id: string;
+    type: "SWAP" | "RESCHEDULE" | "LEAVE";
+    status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
+    createdAt: string;
+    facultyName: string;
+  }>;
+}
+
+const fetcher = async (url: string): Promise<AdminDashboardData> => {
+  const res = await fetch(url);
+  const body = await res.json();
+  if (!res.ok || !body?.success) {
+    throw new Error(body?.error?.message || "Failed to fetch dashboard data");
+  }
+  return body.data as AdminDashboardData;
+};
+
+function formatRequestType(type: AdminDashboardData["recentRequests"][number]["type"]): string {
+  return `${type.charAt(0)}${type.slice(1).toLowerCase()}`;
+}
 
 export default function AdminDashboardPage() {
   const { user } = useRoleAuth();
+  const { data, isLoading } = useSWR("/api/admin/dashboard", fetcher);
+
+  const pendingRequests = data?.pendingRequests ?? 0;
+  const pendingBreakdown = data?.pendingBreakdown ?? { swap: 0, reschedule: 0, leave: 0 };
+  const totalFaculty = data?.totalFaculty ?? 0;
+  const totalDepartments = data?.totalDepartments ?? 0;
+  const approvedThisWeek = data?.approvedThisWeek ?? 0;
+  const recentRequests = data?.recentRequests ?? [];
 
   return (
     <div className="space-y-6">
@@ -20,49 +60,59 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Link href="/admin/requests">
+        <Card className="cursor-pointer transition-colors hover:bg-muted/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">5 swap, 4 reschedule, 3 leave</p>
+            <div className="text-2xl font-bold">{isLoading ? "..." : pendingRequests}</div>
+            <p className="text-xs text-muted-foreground">
+              {pendingBreakdown.swap} swap, {pendingBreakdown.reschedule} reschedule, {pendingBreakdown.leave} leave
+            </p>
           </CardContent>
         </Card>
+        </Link>
 
-        <Card>
+        <Link href="/admin/faculty">
+        <Card className="cursor-pointer transition-colors hover:bg-muted/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Faculty</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">48</div>
-            <p className="text-xs text-muted-foreground">Across 6 departments</p>
+            <div className="text-2xl font-bold">{isLoading ? "..." : totalFaculty}</div>
+            <p className="text-xs text-muted-foreground">Across {totalDepartments} departments</p>
           </CardContent>
         </Card>
+        </Link>
 
-        <Card>
+        <Link href="/admin/departments">
+        <Card className="cursor-pointer transition-colors hover:bg-muted/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Departments</CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">6</div>
+            <div className="text-2xl font-bold">{isLoading ? "..." : totalDepartments}</div>
             <p className="text-xs text-muted-foreground">Active departments</p>
           </CardContent>
         </Card>
+        </Link>
 
-        <Card>
+        <Link href="/admin/requests?filter=approved">
+        <Card className="cursor-pointer transition-colors hover:bg-muted/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Approved This Week</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
+            <div className="text-2xl font-bold">{isLoading ? "..." : approvedThisWeek}</div>
             <p className="text-xs text-muted-foreground">Requests approved</p>
           </CardContent>
         </Card>
+        </Link>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -71,29 +121,40 @@ export default function AdminDashboardPage() {
             <CardTitle>Recent Requests</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                { type: "Swap", faculty: "Dr. John Smith", status: "pending" },
-                { type: "Leave", faculty: "Dr. Jane Doe", status: "approved" },
-                { type: "Reschedule", faculty: "Dr. Robert Johnson", status: "pending" },
-              ].map((req, i) => (
-                <div key={i} className="flex items-center justify-between">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : recentRequests.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No requests yet.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {recentRequests.map((req) => (
+                  <div key={req.id} className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium">{req.type} Request</p>
-                    <p className="text-xs text-muted-foreground">{req.faculty}</p>
+                    <p className="text-sm font-medium">{formatRequestType(req.type)} Request</p>
+                    <p className="text-xs text-muted-foreground">{req.facultyName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(req.createdAt).toLocaleDateString()}
+                    </p>
                   </div>
                   <span
                     className={`text-xs px-2 py-1 rounded-full ${
-                      req.status === "pending"
+                      req.status === "PENDING"
                         ? "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
-                        : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                        : req.status === "APPROVED"
+                          ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                          : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
                     }`}
                   >
-                    {req.status}
+                    {req.status.toLowerCase()}
                   </span>
                 </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -88,27 +88,14 @@ export async function ensureFacultyExists(
   try {
     let faculty = await db.faculty.findUnique({
       where: { userId },
-      include: { profile: true, department: true, preferredSubjects: true },
+      include: { profile: true, preferredSubjects: true },
     });
 
     if (!faculty) {
-      let dept = await db.department.findFirst({
-        where: { code: "GENERAL" },
-      });
-      if (!dept) {
-        dept = await db.department.create({
-          data: {
-            name: "General",
-            code: "GENERAL",
-            description: "Default department",
-          },
-        });
-      }
-
       faculty = await db.faculty.create({
         data: {
           userId,
-          departmentId: dept.id,
+          sharedDepartmentId: null,
           employeeId: `EMP-${userId.slice(-8).toUpperCase()}`,
           designation: "Faculty",
           joiningDate: new Date(),
@@ -125,7 +112,7 @@ export async function ensureFacultyExists(
             },
           },
         },
-        include: { profile: true, department: true, preferredSubjects: true },
+        include: { profile: true, preferredSubjects: true },
       });
     }
     return faculty;

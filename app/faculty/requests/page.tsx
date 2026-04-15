@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import useSWR from "swr";
 import { Plus, ArrowLeftRight, CalendarClock, CalendarOff } from "lucide-react";
 import { RequestsList } from "@/components/faculty/requests-list";
 import {
@@ -28,6 +29,19 @@ import {
 } from "@/hooks/use-faculty";
 import { RequestStatus, type FacultyRequest } from "@/lib/types/faculty";
 import { toast } from "sonner";
+
+interface CourseAssignment {
+  id: string;
+  course_code: string;
+  course_name: string;
+  day_of_week?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  room_label?: string | null;
+  status: "PENDING" | "ACCEPTED" | "REJECTED";
+  assigned_at: string;
+  response_note?: string | null;
+}
 
 function RequestsSkeleton() {
   return (
@@ -58,12 +72,17 @@ export default function RequestsPage() {
   const [detailsRequestId, setDetailsRequestId] = useState<string | null>(null);
 
   const { data: requestsData, isLoading, error, mutate } = useRequests();
+  const { data: assignmentsData, mutate: mutateAssignments } = useSWR(
+    "/api/faculty/course-assignments",
+    (url: string) => fetch(url).then((r) => r.json()),
+  );
   const { data: classOptions = [] } = useClassOptions();
   const { data: colleagueOptions = [] } = useColleagueOptions();
   const { data: unreadCount = 0 } = useUnreadCount();
   const { trigger: withdrawMutation } = useWithdrawRequest();
 
   const requests = requestsData?.data ?? [];
+  const courseAssignments: CourseAssignment[] = assignmentsData?.data?.assignments ?? [];
 
   const pendingRequests = requests.filter(
     (r) => r.status === RequestStatus.PENDING,
@@ -96,6 +115,21 @@ export default function RequestsPage() {
     setDetailsOpen(true);
   }
 
+  async function respondToAssignment(id: string, status: "ACCEPTED" | "REJECTED") {
+    const res = await fetch(`/api/faculty/course-assignments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body?.success) {
+      toast.error(body?.error?.message || "Failed to update assignment request");
+      return;
+    }
+    toast.success(`Assignment ${status.toLowerCase()}`);
+    await mutateAssignments();
+  }
+
   if (error) {
     return (
       <div className="flex-1 overflow-auto">
@@ -120,6 +154,51 @@ export default function RequestsPage() {
   return (
     <div className="flex-1 overflow-auto">
       <div className="mx-auto max-w-5xl space-y-6 p-6">
+        <Card>
+          <CardContent className="p-4">
+            <h2 className="text-lg font-semibold">Course Assignment Requests</h2>
+            {courseAssignments.length === 0 ? (
+              <p className="mt-2 text-sm text-muted-foreground">No course assignment requests.</p>
+            ) : (
+              <div className="mt-3 space-y-3">
+                {courseAssignments.map((assignment) => (
+                  <div key={assignment.id} className="rounded-md border p-3">
+                    <p className="font-medium">
+                      {assignment.course_code} - {assignment.course_name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Assigned: {new Date(assignment.assigned_at).toLocaleDateString()} | Status: {assignment.status}
+                    </p>
+                    {(assignment.day_of_week || assignment.start_time || assignment.room_label) && (
+                      <p className="text-xs text-muted-foreground">
+                        {assignment.day_of_week ? `${assignment.day_of_week} ` : ""}
+                        {assignment.start_time && assignment.end_time
+                          ? `${assignment.start_time} - ${assignment.end_time}`
+                          : ""}
+                        {assignment.room_label ? ` • ${assignment.room_label}` : ""}
+                      </p>
+                    )}
+                    {assignment.status === "PENDING" ? (
+                      <div className="mt-2 flex gap-2">
+                        <Button size="sm" onClick={() => respondToAssignment(assignment.id, "ACCEPTED")}>
+                          Accept
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => respondToAssignment(assignment.id, "REJECTED")}
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="flex justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
