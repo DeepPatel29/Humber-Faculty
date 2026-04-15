@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Plus, ArrowLeftRight, CalendarClock, CalendarOff } from "lucide-react";
-import { FacultyHeader } from "@/components/faculty/faculty-header";
 import { RequestsList } from "@/components/faculty/requests-list";
 import {
   SwapRequestDialog,
@@ -65,15 +64,15 @@ export default function RequestsPage() {
   const { trigger: withdrawMutation } = useWithdrawRequest();
 
   const requests = requestsData?.data ?? [];
-  
+
   const pendingRequests = requests.filter(
-    (r) => r.status === RequestStatus.PENDING
+    (r) => r.status === RequestStatus.PENDING,
   );
   const processedRequests = requests.filter(
     (r) =>
       r.status === RequestStatus.APPROVED ||
       r.status === RequestStatus.REJECTED ||
-      r.status === RequestStatus.WITHDRAWN
+      r.status === RequestStatus.WITHDRAWN,
   );
 
   const handleWithdraw = async (requestId: string) => {
@@ -82,7 +81,9 @@ export default function RequestsPage() {
       await mutate();
       toast.success("Request withdrawn successfully");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to withdraw request");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to withdraw request",
+      );
     }
   };
 
@@ -97,109 +98,91 @@ export default function RequestsPage() {
 
   if (error) {
     return (
-      <>
-        <FacultyHeader
-          title="Requests"
-          description="Manage your swap, reschedule, and leave requests"
-          unreadNotifications={0}
-        />
-        <div className="flex-1 overflow-auto">
-          <div className="mx-auto max-w-5xl p-6">
-            <Card>
-              <CardContent className="flex min-h-[400px] items-center justify-center p-6">
-                <div className="text-center">
-                  <p className="text-lg font-medium text-destructive">
-                    Failed to load requests
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {error.message}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+      <div className="flex-1 overflow-auto">
+        <div className="mx-auto max-w-5xl p-6">
+          <Card>
+            <CardContent className="flex min-h-[400px] items-center justify-center p-6">
+              <div className="text-center">
+                <p className="text-lg font-medium text-destructive">
+                  Failed to load requests
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {error.message}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <FacultyHeader
-        title="Requests"
-        description="Manage your swap, reschedule, and leave requests"
-        unreadNotifications={unreadCount}
-      />
-
     <div className="flex-1 overflow-auto">
       <div className="mx-auto max-w-5xl space-y-6 p-6">
-          {/* Actions */}
-          <div className="flex justify-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Request
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => setSwapOpen(true)}>
-                  <ArrowLeftRight className="mr-2 h-4 w-4" />
-                  Class Swap
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setRescheduleOpen(true)}>
-                  <CalendarClock className="mr-2 h-4 w-4" />
-                  Reschedule
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLeaveOpen(true)}>
-                  <CalendarOff className="mr-2 h-4 w-4" />
-                  Leave Request
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Tabs */}
-          <Tabs defaultValue="pending" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="pending" className="gap-2">
-                Pending
-                {pendingRequests.length > 0 && (
-                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 text-xs font-medium text-primary">
-                    {pendingRequests.length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="history">History</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="pending" className="space-y-4">
-              {isLoading ? (
-                <RequestsSkeleton />
-              ) : (
-                <RequestsList
-                  requests={pendingRequests}
-                  onView={handleViewDetails}
-                  onWithdraw={(request) => handleWithdraw(request.id)}
-                />
-              )}
-            </TabsContent>
-
-            <TabsContent value="history" className="space-y-4">
-              {isLoading ? (
-                <RequestsSkeleton />
-              ) : (
-                <RequestsList
-                  requests={processedRequests}
-                  onView={handleViewDetails}
-                />
-              )}
-            </TabsContent>
-          </Tabs>
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                New Request
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => setSwapOpen(true)}>
+                <ArrowLeftRight className="mr-2 h-4 w-4" />
+                Class Swap
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setRescheduleOpen(true)}>
+                <CalendarClock className="mr-2 h-4 w-4" />
+                Reschedule
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setLeaveOpen(true)}>
+                <CalendarOff className="mr-2 h-4 w-4" />
+                Leave Request
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+
+        <Tabs defaultValue="pending" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="pending" className="gap-2">
+              Pending
+              {pendingRequests.length > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 text-xs font-medium text-primary">
+                  {pendingRequests.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pending" className="space-y-4">
+            {isLoading ? (
+              <RequestsSkeleton />
+            ) : (
+              <RequestsList
+                requests={pendingRequests}
+                onView={handleViewDetails}
+                onWithdraw={(request) => handleWithdraw(request.id)}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-4">
+            {isLoading ? (
+              <RequestsSkeleton />
+            ) : (
+              <RequestsList
+                requests={processedRequests}
+                onView={handleViewDetails}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
-      {/* Dialogs */}
       <SwapRequestDialog
         open={swapOpen}
         onOpenChange={setSwapOpen}
@@ -213,8 +196,8 @@ export default function RequestsPage() {
         myClasses={classOptions}
         onSuccess={handleRequestSuccess}
       />
-      <LeaveRequestDialog 
-        open={leaveOpen} 
+      <LeaveRequestDialog
+        open={leaveOpen}
         onOpenChange={setLeaveOpen}
         onSuccess={handleRequestSuccess}
       />
@@ -226,6 +209,6 @@ export default function RequestsPage() {
           if (!open) setDetailsRequestId(null);
         }}
       />
-    </>
+    </div>
   );
 }

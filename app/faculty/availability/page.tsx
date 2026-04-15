@@ -1,8 +1,19 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { Upload } from "lucide-react";
 import { AvailabilityForm } from "@/components/faculty/availability-form";
+import { AvailabilityUpload } from "@/components/faculty/availability-upload";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useAvailability, useUpdateAvailability } from "@/hooks/use-faculty";
 import { toast } from "sonner";
 import type { UpdateAvailabilityInput } from "@/lib/validations/faculty";
@@ -46,14 +57,33 @@ function AvailabilitySkeleton() {
 }
 
 export default function AvailabilityPage() {
+  const [showUpload, setShowUpload] = useState(false);
   const { data: availability, isLoading, error, mutate } = useAvailability();
   const { trigger: updateAvailabilityMutation, isMutating } =
     useUpdateAvailability();
+
+  // Listen for data updates from other components
+  useEffect(() => {
+    const handleDataUpdate = () => {
+      mutate();
+    };
+    window.addEventListener("facultyDataUpdated", handleDataUpdate);
+    return () =>
+      window.removeEventListener("facultyDataUpdated", handleDataUpdate);
+  }, [mutate]);
 
   const handleSave = async (formData: UpdateAvailabilityInput) => {
     await updateAvailabilityMutation(formData);
     await mutate();
     toast.success("Availability updated successfully");
+  };
+
+  const handleUploadComplete = async () => {
+    setShowUpload(false);
+    await mutate();
+    toast.success(
+      "Availability updated. Administrators have been notified of your changes.",
+    );
   };
 
   if (error) {
@@ -77,6 +107,22 @@ export default function AvailabilityPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
+      <div className="flex justify-end">
+        <Dialog open={showUpload} onOpenChange={setShowUpload}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Availability
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Import Availability</DialogTitle>
+            </DialogHeader>
+            <AvailabilityUpload onUploadComplete={handleUploadComplete} />
+          </DialogContent>
+        </Dialog>
+      </div>
       {isLoading || !availability ? (
         <AvailabilitySkeleton />
       ) : (

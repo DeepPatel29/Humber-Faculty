@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,18 @@ import {
   List,
   Grid3X3,
   LayoutGrid,
+  Upload,
+  X,
 } from "lucide-react";
 import { useTimetable } from "@/hooks/use-faculty";
+import { TimetableUpload } from "@/components/faculty/timetable-upload";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 type ViewMode = "day" | "week" | "month";
 
@@ -123,7 +133,13 @@ function getField(item: any, ...keys: string[]): string {
   return "";
 }
 
-function ClassCard({ item, compact = false }: { item: any; compact?: boolean }) {
+function ClassCard({
+  item,
+  compact = false,
+}: {
+  item: any;
+  compact?: boolean;
+}) {
   const name = getField(item, "courseName", "course_name", "name");
   const code = getField(item, "courseCode", "course_code", "code");
   const start = getField(item, "startTime", "start_time");
@@ -141,7 +157,11 @@ function ClassCard({ item, compact = false }: { item: any; compact?: boolean }) 
         } cursor-default hover:opacity-80 transition-opacity`}
       >
         <p className="font-medium truncate">{name}</p>
-        {start && <p className="text-[10px] text-muted-foreground">{formatTime(start)}</p>}
+        {start && (
+          <p className="text-[10px] text-muted-foreground">
+            {formatTime(start)}
+          </p>
+        )}
       </div>
     );
   }
@@ -226,8 +246,11 @@ function MonthView({
       <div className="grid grid-cols-7">
         {grid.map((cell, idx) => {
           const isToday = isSameDay(cell.date, today);
-          const classes = cell.isCurrentMonth ? getClassesForDate(cell.date) : [];
-          const isWeekend = cell.date.getDay() === 0 || cell.date.getDay() === 6;
+          const classes = cell.isCurrentMonth
+            ? getClassesForDate(cell.date)
+            : [];
+          const isWeekend =
+            cell.date.getDay() === 0 || cell.date.getDay() === 6;
 
           return (
             <div
@@ -236,8 +259,8 @@ function MonthView({
                 !cell.isCurrentMonth
                   ? "bg-muted/20"
                   : isWeekend
-                  ? "bg-muted/10"
-                  : ""
+                    ? "bg-muted/10"
+                    : ""
               }`}
             >
               <div className="flex items-center justify-between mb-1">
@@ -246,10 +269,10 @@ function MonthView({
                     isToday
                       ? "bg-primary text-primary-foreground"
                       : !cell.isCurrentMonth
-                      ? "text-muted-foreground/40"
-                      : isWeekend
-                      ? "text-primary"
-                      : "text-foreground"
+                        ? "text-muted-foreground/40"
+                        : isWeekend
+                          ? "text-primary"
+                          : "text-foreground"
                   }`}
                 >
                   {cell.date.getDate()}
@@ -320,9 +343,14 @@ function WeekView({
             </div>
             {WEEKDAY_FULL.map((dayName, dayIdx) => {
               const dayClasses = schedule.filter((s) => {
-                const d = getField(s, "dayOfWeek", "day_of_week", "day").toUpperCase();
+                const d = getField(
+                  s,
+                  "dayOfWeek",
+                  "day_of_week",
+                  "day",
+                ).toUpperCase();
                 const startHour = parseInt(
-                  getField(s, "startTime", "start_time").split(":")[0] || "0"
+                  getField(s, "startTime", "start_time").split(":")[0] || "0",
                 );
                 return d === dayName && startHour === hour;
               });
@@ -362,12 +390,14 @@ function DayView({ date, schedule }: { date: Date; schedule: any[] }) {
 
   const dayClasses = schedule
     .filter(
-      (s) => getField(s, "dayOfWeek", "day_of_week", "day").toUpperCase() === dayName
+      (s) =>
+        getField(s, "dayOfWeek", "day_of_week", "day").toUpperCase() ===
+        dayName,
     )
     .sort((a, b) =>
       getField(a, "startTime", "start_time").localeCompare(
-        getField(b, "startTime", "start_time")
-      )
+        getField(b, "startTime", "start_time"),
+      ),
     );
 
   const TIME_HOURS = Array.from({ length: 12 }, (_, i) => i + 8);
@@ -378,7 +408,7 @@ function DayView({ date, schedule }: { date: Date; schedule: any[] }) {
         {TIME_HOURS.map((hour) => {
           const hourClasses = dayClasses.filter((s) => {
             const startHour = parseInt(
-              getField(s, "startTime", "start_time").split(":")[0] || "0"
+              getField(s, "startTime", "start_time").split(":")[0] || "0",
             );
             return startHour === hour;
           });
@@ -407,13 +437,24 @@ function DayView({ date, schedule }: { date: Date; schedule: any[] }) {
 export default function TimetablePage() {
   const [view, setView] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [showUpload, setShowUpload] = useState(false);
   const today = new Date();
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const weekStart = getMonday(currentDate);
 
-  const { data: rawData, isLoading } = useTimetable({});
+  const { data: rawData, isLoading, mutate } = useTimetable({});
   const schedule = Array.isArray(rawData) ? rawData.filter(Boolean) : [];
+
+  // Listen for data updates from upload component
+  useEffect(() => {
+    const handleDataUpdate = () => {
+      mutate();
+    };
+    window.addEventListener("facultyDataUpdated", handleDataUpdate);
+    return () =>
+      window.removeEventListener("facultyDataUpdated", handleDataUpdate);
+  }, [mutate]);
 
   function navigate(direction: number) {
     const d = new Date(currentDate);
@@ -462,6 +503,25 @@ export default function TimetablePage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">{headerLabel}</h1>
         <div className="flex items-center gap-2 flex-wrap">
+          <Dialog open={showUpload} onOpenChange={setShowUpload}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9">
+                <Upload className="h-4 w-4 mr-2" />
+                Upload
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Import Timetable</DialogTitle>
+              </DialogHeader>
+              <TimetableUpload
+                onUploadComplete={() => {
+                  setShowUpload(false);
+                  mutate();
+                }}
+              />
+            </DialogContent>
+          </Dialog>
           <div className="flex items-center rounded-lg border bg-card">
             <Button
               variant="ghost"
@@ -530,7 +590,12 @@ export default function TimetablePage() {
       </div>
 
       {view === "month" && (
-        <MonthView year={year} month={month} schedule={schedule} today={today} />
+        <MonthView
+          year={year}
+          month={month}
+          schedule={schedule}
+          today={today}
+        />
       )}
       {view === "week" && (
         <WeekView weekStart={weekStart} schedule={schedule} today={today} />

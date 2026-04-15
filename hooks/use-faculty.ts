@@ -54,7 +54,7 @@ import type {
 
 const defaultConfig: SWRConfiguration = {
   revalidateOnFocus: false,
-  dedupingInterval: 5000,
+  dedupingInterval: 10000, // Increased from 5s to 10s for better caching
   errorRetryCount: 2,
   errorRetryInterval: 3000,
 };
@@ -73,7 +73,7 @@ export function useDashboard(config?: SWRConfiguration) {
       }
       return res.data;
     },
-    { ...defaultConfig, refreshInterval: 60000, ...config }
+    { ...defaultConfig, refreshInterval: 120000, ...config }, // Refresh every 2 minutes instead of 1
   );
 }
 
@@ -91,23 +91,23 @@ export function useProfile(config?: SWRConfiguration) {
       }
       return res.data;
     },
-    { ...defaultConfig, ...config }
+    { ...defaultConfig, ...config },
   );
 }
 
 export function useUpdateProfile() {
-	return useSWRMutation(
-		"faculty-profile",
-		async (_key: string, { arg }: { arg: UpdateProfileInput }) => {
-			const res = await updateProfile(arg);
-			if (!res.success) {
-				throw new Error(res.error || "Failed to update profile");
-			}
-			await globalMutate("faculty-profile");
-			await globalMutate("faculty-dashboard");
-			return res.data;
-		}
-	);
+  return useSWRMutation(
+    "faculty-profile",
+    async (_key: string, { arg }: { arg: UpdateProfileInput }) => {
+      const res = await updateProfile(arg);
+      if (!res.success) {
+        throw new Error(res.error || "Failed to update profile");
+      }
+      await globalMutate("faculty-profile");
+      await globalMutate("faculty-dashboard");
+      return res.data;
+    },
+  );
 }
 
 export function useTeachingHistory(config?: SWRConfiguration) {
@@ -118,9 +118,11 @@ export function useTeachingHistory(config?: SWRConfiguration) {
       if (!res.success || !res.data) {
         throw new Error(res.error || "Failed to fetch teaching history");
       }
-      return Array.isArray(res.data.teachingHistory) ? res.data.teachingHistory : [];
+      return Array.isArray(res.data.teachingHistory)
+        ? res.data.teachingHistory
+        : [];
     },
-    { ...defaultConfig, ...config }
+    { ...defaultConfig, ...config },
   );
 }
 
@@ -134,7 +136,7 @@ export function useCreateTeachingHistory() {
       }
       await globalMutate("faculty-teaching-history");
       return res.data;
-    }
+    },
   );
 }
 
@@ -143,7 +145,7 @@ export function useUpdateTeachingHistory() {
     "faculty-teaching-history",
     async (
       _key: string,
-      { arg }: { arg: { id: string; data: UpdateTeachingHistoryInput } }
+      { arg }: { arg: { id: string; data: UpdateTeachingHistoryInput } },
     ) => {
       const res = await updateTeachingHistory(arg.id, arg.data);
       if (!res.success) {
@@ -151,7 +153,7 @@ export function useUpdateTeachingHistory() {
       }
       await globalMutate("faculty-teaching-history");
       return res.data;
-    }
+    },
   );
 }
 
@@ -165,7 +167,7 @@ export function useDeleteTeachingHistory() {
       }
       await globalMutate("faculty-teaching-history");
       return res.data;
-    }
+    },
   );
 }
 
@@ -173,9 +175,18 @@ export function useDeleteTeachingHistory() {
 // Timetable Hooks
 // ============================================================================
 
-export function useTimetable(params?: TimetableParams, config?: SWRConfiguration) {
+export function useTimetable(
+  params?: TimetableParams,
+  config?: SWRConfiguration,
+) {
   const key = params
-    ? ["faculty-timetable", params.weekStart, params.weekEnd, params.courseCode, params.program]
+    ? [
+        "faculty-timetable",
+        params.weekStart,
+        params.weekEnd,
+        params.courseCode,
+        params.program,
+      ]
     : "faculty-timetable";
 
   return useSWR(
@@ -189,7 +200,7 @@ export function useTimetable(params?: TimetableParams, config?: SWRConfiguration
       const data = Array.isArray(res.data) ? res.data : [];
       return data;
     },
-    { ...defaultConfig, ...config }
+    { ...defaultConfig, ...config },
   );
 }
 
@@ -205,7 +216,7 @@ export function useTodaySchedule(config?: SWRConfiguration) {
       const data = Array.isArray(res.data) ? res.data : [];
       return data;
     },
-    { ...defaultConfig, ...config }
+    { ...defaultConfig, ...config },
   );
 }
 
@@ -221,7 +232,7 @@ export function useUpcomingSchedule(limit = 5, config?: SWRConfiguration) {
       const data = Array.isArray(res.data) ? res.data : [];
       return data;
     },
-    { ...defaultConfig, ...config }
+    { ...defaultConfig, ...config },
   );
 }
 
@@ -239,33 +250,42 @@ export function useAvailability(config?: SWRConfiguration) {
       }
       return res.data;
     },
-    { ...defaultConfig, ...config }
+    { ...defaultConfig, ...config },
   );
 }
 
 export function useUpdateAvailability() {
-	return useSWRMutation(
-		"faculty-availability",
-		async (_key: string, { arg }: { arg: UpdateAvailabilityInput }) => {
-			const res = await updateAvailability(arg);
-			if (!res.success) {
-				throw new Error(res.error || "Failed to update availability");
-			}
-			await globalMutate("faculty-availability");
-			await globalMutate("faculty-dashboard");
-			await globalMutate("faculty-timetable");
-			return res.data;
-		}
-	);
+  return useSWRMutation(
+    "faculty-availability",
+    async (_key: string, { arg }: { arg: UpdateAvailabilityInput }) => {
+      const res = await updateAvailability(arg);
+      if (!res.success) {
+        throw new Error(res.error || "Failed to update availability");
+      }
+      await globalMutate("faculty-availability");
+      await globalMutate("faculty-dashboard");
+      await globalMutate("faculty-timetable");
+      return res.data;
+    },
+  );
 }
 
 // ============================================================================
 // Requests Hooks
 // ============================================================================
 
-export function useRequests(params?: RequestsParams, config?: SWRConfiguration) {
+export function useRequests(
+  params?: RequestsParams,
+  config?: SWRConfiguration,
+) {
   const key = params
-    ? ["faculty-requests", params.status, params.type, params.page, params.pageSize]
+    ? [
+        "faculty-requests",
+        params.status,
+        params.type,
+        params.page,
+        params.pageSize,
+      ]
     : "faculty-requests";
 
   return useSWR(
@@ -278,7 +298,7 @@ export function useRequests(params?: RequestsParams, config?: SWRConfiguration) 
       const data = Array.isArray(res.data) ? res.data : [];
       return { data, meta: res.meta };
     },
-    { ...defaultConfig, ...config }
+    { ...defaultConfig, ...config },
   );
 }
 
@@ -291,7 +311,7 @@ export function useCreateSwapRequest() {
         throw new Error(res.error || "Failed to create swap request");
       }
       return res.data;
-    }
+    },
   );
 }
 
@@ -304,7 +324,7 @@ export function useCreateRescheduleRequest() {
         throw new Error(res.error || "Failed to create reschedule request");
       }
       return res.data;
-    }
+    },
   );
 }
 
@@ -317,7 +337,7 @@ export function useCreateLeaveRequest() {
         throw new Error(res.error || "Failed to create leave request");
       }
       return res.data;
-    }
+    },
   );
 }
 
@@ -330,7 +350,7 @@ export function useWithdrawRequest() {
         throw new Error(res.error || "Failed to withdraw request");
       }
       return res.data;
-    }
+    },
   );
 }
 
@@ -338,7 +358,10 @@ export function useWithdrawRequest() {
 // Notifications Hooks
 // ============================================================================
 
-export function useNotifications(params?: NotificationsParams, config?: SWRConfiguration) {
+export function useNotifications(
+  params?: NotificationsParams,
+  config?: SWRConfiguration,
+) {
   const key = params
     ? ["faculty-notifications", params.unreadOnly, params.page, params.pageSize]
     : "faculty-notifications";
@@ -353,7 +376,7 @@ export function useNotifications(params?: NotificationsParams, config?: SWRConfi
       const data = Array.isArray(res.data) ? res.data : [];
       return { data, meta: res.meta };
     },
-    { ...defaultConfig, ...config }
+    { ...defaultConfig, ...config },
   );
 }
 
@@ -367,7 +390,7 @@ export function useUnreadCount(config?: SWRConfiguration) {
       }
       return res.data.count;
     },
-    { ...defaultConfig, refreshInterval: 30000, ...config }
+    { ...defaultConfig, refreshInterval: 30000, ...config },
   );
 }
 
@@ -380,21 +403,18 @@ export function useMarkNotificationAsRead() {
         throw new Error(res.error || "Failed to mark notification as read");
       }
       return res.data;
-    }
+    },
   );
 }
 
 export function useMarkAllNotificationsAsRead() {
-  return useSWRMutation(
-    "faculty-notifications",
-    async () => {
-      const res = await markAllNotificationsAsRead();
-      if (!res.success) {
-        throw new Error(res.error || "Failed to mark all notifications as read");
-      }
-      return res.data;
+  return useSWRMutation("faculty-notifications", async () => {
+    const res = await markAllNotificationsAsRead();
+    if (!res.success) {
+      throw new Error(res.error || "Failed to mark all notifications as read");
     }
-  );
+    return res.data;
+  });
 }
 
 // ============================================================================
@@ -413,7 +433,7 @@ export function useClassOptions(config?: SWRConfiguration) {
       const data = Array.isArray(res.data) ? res.data : [];
       return data;
     },
-    { ...defaultConfig, ...config }
+    { ...defaultConfig, ...config },
   );
 }
 
@@ -429,7 +449,7 @@ export function useColleagueOptions(config?: SWRConfiguration) {
       const data = Array.isArray(res.data) ? res.data : [];
       return data;
     },
-    { ...defaultConfig, ...config }
+    { ...defaultConfig, ...config },
   );
 }
 
@@ -444,7 +464,7 @@ export function useDepartmentOptions(config?: SWRConfiguration) {
       const data = Array.isArray(res.data) ? res.data : [];
       return data;
     },
-    { ...defaultConfig, ...config }
+    { ...defaultConfig, ...config },
   );
 }
 
@@ -452,7 +472,11 @@ export function useDepartmentOptions(config?: SWRConfiguration) {
 // Admin: canonical Faculty CRUD (GET /api/faculty, /api/faculty/[id])
 // ============================================================================
 
-export function useFacultyAdminList(page: number, limit = 20, config?: SWRConfiguration) {
+export function useFacultyAdminList(
+  page: number,
+  limit = 20,
+  config?: SWRConfiguration,
+) {
   return useSWR(
     ["faculty-admin-list", page, limit],
     async () => {
@@ -462,11 +486,14 @@ export function useFacultyAdminList(page: number, limit = 20, config?: SWRConfig
       }
       return res.data;
     },
-    { ...defaultConfig, ...config }
+    { ...defaultConfig, ...config },
   );
 }
 
-export function useFacultyAdminDetail(id: string | null, config?: SWRConfiguration) {
+export function useFacultyAdminDetail(
+  id: string | null,
+  config?: SWRConfiguration,
+) {
   return useSWR(
     id ? ["faculty-admin-detail", id] : null,
     async () => {
@@ -476,7 +503,7 @@ export function useFacultyAdminDetail(id: string | null, config?: SWRConfigurati
       }
       return res.data.faculty;
     },
-    { ...defaultConfig, ...config }
+    { ...defaultConfig, ...config },
   );
 }
 
@@ -488,9 +515,11 @@ export function useCreateFacultyResource() {
       if (!res.success || !res.data) {
         throw new Error(res.error || "Failed to create faculty");
       }
-      await globalMutate((k) => Array.isArray(k) && k[0] === "faculty-admin-list");
+      await globalMutate(
+        (k) => Array.isArray(k) && k[0] === "faculty-admin-list",
+      );
       return res.data;
-    }
+    },
   );
 }
 
@@ -499,16 +528,18 @@ export function useUpdateFacultyResource() {
     "faculty-admin-update",
     async (
       _key: string,
-      { arg }: { arg: { id: string; data: UpdateFacultyResourceInput } }
+      { arg }: { arg: { id: string; data: UpdateFacultyResourceInput } },
     ) => {
       const res = await updateFacultyResource(arg.id, arg.data);
       if (!res.success || !res.data) {
         throw new Error(res.error || "Failed to update faculty");
       }
-      await globalMutate((k) => Array.isArray(k) && k[0] === "faculty-admin-list");
+      await globalMutate(
+        (k) => Array.isArray(k) && k[0] === "faculty-admin-list",
+      );
       await globalMutate(["faculty-admin-detail", arg.id]);
       return res.data;
-    }
+    },
   );
 }
 
@@ -520,8 +551,42 @@ export function useDeleteFacultyResource() {
       if (!res.success || !res.data) {
         throw new Error(res.error || "Failed to delete faculty");
       }
-      await globalMutate((k) => Array.isArray(k) && k[0] === "faculty-admin-list");
+      await globalMutate(
+        (k) => Array.isArray(k) && k[0] === "faculty-admin-list",
+      );
       return res.data;
-    }
+    },
   );
+}
+
+// ============================================================================
+// Global Cache Invalidation
+// ============================================================================
+
+export async function invalidateAllFacultyData(): Promise<void> {
+  // Invalidate all faculty-related cache keys
+  // Using predicate function to catch all variations of keys with parameters
+  await Promise.all([
+    globalMutate((key) => {
+      if (typeof key === "string") {
+        return key.startsWith("faculty-");
+      }
+      if (Array.isArray(key)) {
+        return key[0]?.toString().startsWith("faculty-");
+      }
+      return false;
+    }),
+  ]);
+}
+
+export async function invalidateFacultyCache(cacheName: string): Promise<void> {
+  await globalMutate((key) => {
+    if (typeof key === "string") {
+      return key === cacheName || key.startsWith(`${cacheName}-`);
+    }
+    if (Array.isArray(key)) {
+      return key[0] === cacheName;
+    }
+    return false;
+  });
 }
