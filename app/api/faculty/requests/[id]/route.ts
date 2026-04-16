@@ -27,8 +27,8 @@ function scheduleToSummary(
     dayOfWeek: string;
     startTime: string;
     endTime: string;
-    course: { code: string; name: string };
-    room: { building: string; name: string };
+    course: { code: string; name: string } | null;
+    room: { building: string; name: string } | null;
     faculty: { user: { name: string } };
   } | null
 ): {
@@ -44,12 +44,12 @@ function scheduleToSummary(
   if (!s) return null;
   return {
     id: s.id,
-    courseCode: s.course.code,
-    courseName: s.course.name,
+    courseCode: s.course?.code ?? "—",
+    courseName: s.course?.name ?? "—",
     dayOfWeek: s.dayOfWeek,
     startTime: s.startTime,
     endTime: s.endTime,
-    roomLabel: `${s.room.building} ${s.room.name}`,
+    roomLabel: s.room ? `${s.room.building} ${s.room.name}` : "—",
     ownerName: s.faculty.user.name,
   };
 }
@@ -66,7 +66,7 @@ function serializeRequest(r: {
   endDate: Date | null;
   reason: string;
   targetFacultyId: string | null;
-  targetScheduleId: string | null;
+  schedulerEventId: string | null;
   newDate: Date | null;
   newStartTime: string | null;
   newEndTime: string | null;
@@ -93,7 +93,7 @@ function serializeRequest(r: {
     endDate: r.endDate?.toISOString() ?? null,
     reason: r.reason,
     targetFacultyId: r.targetFacultyId,
-    targetScheduleId: r.targetScheduleId,
+    targetScheduleId: r.schedulerEventId,
     newDate: r.newDate?.toISOString() ?? null,
     newStartTime: r.newStartTime,
     newEndTime: r.newEndTime,
@@ -173,9 +173,9 @@ export async function GET(
             include: { user: { select: { name: true, email: true } } },
           })
         : Promise.resolve(null),
-      existing.targetScheduleId
+      existing.schedulerEventId
         ? db.facultySchedule.findUnique({
-            where: { id: existing.targetScheduleId },
+            where: { id: existing.schedulerEventId },
             include: scheduleInclude,
           })
         : Promise.resolve(null),

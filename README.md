@@ -4,11 +4,11 @@ A modern **faculty management portal** built with Next.js 16, React 19, TypeScri
 
 ## Team Members
 
-- Deep
-- Kiran
-- Taslimabanu
-- Nidhi
-- Jashan
+- Deep  
+- Nidhi  
+- Kiran  
+- Taslima  
+- Jashan  
 
 ## Project Overview
 
@@ -109,17 +109,39 @@ Schema changes were applied to the Neon database with **`prisma migrate`** and/o
 
 **Phase 1** for the Faculty backend is in place: the **Prisma model layer**, **Neon-friendly PostgreSQL connection**, **Better Auth–backed sessions**, **RBAC-aligned Faculty and portal routes**, **Zod validation**, **typed responses**, and **canonical CRUD** under `/api/faculty` and `/api/faculty/[id]` are implemented and wired together.
 
+**Phase 2** adds the **Next.js + shadcn/ui frontend**: faculty and admin portals, forms and tables wired to the APIs above, client-side validation, loading/empty/error states, and role-aware navigation (see **Phase 2 – frontend ownership** below).
+
 Remaining polish visible in code includes reliance on a valid **`DATABASE_URL`** (features degrade with clear responses when the DB client is unavailable) and **Better Auth** initialization that can be skipped if setup fails—those are operational constraints rather than missing Faculty features.
 
-## Team Task Distribution
+## Team task distribution
 
-| Member      | Contribution focus                                                                                                                                |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Deep**    | Database design and Prisma schema for Faculty and related entities; alignment with Better Auth tables and enums                                   |
-| **Kiran**   | Canonical Faculty **CRUD** API routes (`/api/faculty`, `/api/faculty/[id]`), Prisma queries, pagination, and conflict checks with user/department |
-| **Taslima** | Faculty portal APIs: profile, availability, timetable, dashboard; integration with `ensureFacultyExists` and option endpoints                     |
-| **Nidhi**   | Requests and notifications sub-APIs, timeline behavior, and admin faculty listing route                                                           |
-| **Jashan**  | Authentication helpers, RBAC permission matrix, Zod schemas and shared API response helpers; Playwright/RBAC documentation support                |
+### Phase 1 (backend & data)
+
+| Member        | Contribution focus                                                                                                                                   |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Deep**      | Database design and Prisma schema for Faculty and related entities; alignment with Better Auth tables and enums                                      |
+| **Nidhi**     | Requests and notifications sub-APIs, timeline behavior, and admin faculty listing route                                                              |
+| **Kiran**     | Canonical Faculty **CRUD** API routes (`/api/faculty`, `/api/faculty/[id]`), Prisma queries, pagination, and conflict checks with user/department   |
+| **Taslima**   | Faculty portal APIs: profile, availability, timetable, dashboard; integration with `ensureFacultyExists` and option endpoints                        |
+| **Jashan**    | Authentication helpers, RBAC permission matrix, Zod schemas and shared API response helpers; Playwright/RBAC documentation support                   |
+
+### Phase 2 (frontend — divide ownership)
+
+Work is split so each person owns **end-to-end UI** for an area (pages, components, API wiring, and UX states) with minimal overlap. Use shared patterns from `components/ui/`, `lib/api/faculty-client.ts`, and `hooks/use-faculty.ts` rather than duplicating fetch logic.
+
+| Member        | Primary ownership (paths & scope)                                                                                                                                                                                                                                                                 |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Deep**      | **Admin faculty management** — `app/admin/dashboard`, `app/admin/faculty`, `app/admin/faculty/[id]`, `components/admin/faculty-create-dialog.tsx`; table/list, create dialog, detail + edit form + delete; integrate `GET`/`POST` `/api/faculty`, `GET`/`PUT`/`DELETE` `/api/faculty/[id]`, department options. |
+| **Nidhi**     | **Requests & notifications UI** — `app/faculty/requests`, `app/faculty/notifications`, `app/admin/requests`; `components/faculty/requests-list.tsx`, `request-dialogs.tsx`, `request-details-dialog.tsx`, `notifications-list.tsx`; list/detail, create flows, approve/reject (admin), empty/loading/error states. |
+| **Kiran**     | **Dashboard & shared data hooks** — `app/faculty/dashboard`, `components/faculty/dashboard-cards.tsx`, `components/faculty/schedule-card.tsx`; SWR hooks and client API usage for dashboard/today/upcoming (`useDashboard`, related calls in `hooks/use-faculty.ts` / `lib/api/faculty-client.ts`); polish overview cards and links. |
+| **Taslima**   | **Timetable & availability** — `app/faculty/timetable`, `app/faculty/availability`; `components/faculty/timetable-grid.tsx`, `timetable-filters.tsx`, `availability-form.tsx`; filters, week navigation, availability CRUD UX, empty states for schedule.                                        |
+| **Jashan**    | **Auth, shells, profile & cross-cutting UX** — `app/(auth)/login`, `app/(auth)/signup`, `app/unauthorized`, `app/faculty/layout.tsx`, `app/admin/layout.tsx`, `app/scheduler/layout.tsx` (as applicable); `components/faculty/faculty-sidebar.tsx`, `faculty-header.tsx`, `role-gate.tsx`, `hooks/use-role-auth.ts`, `hooks/use-session.ts`, `lib/auth-client.ts`; `app/faculty/profile`, `components/faculty/profile-form.tsx`; theme toggle, toasts, and accessibility/navigation consistency. |
+
+**Collaboration notes**
+
+- **API contract changes** (new fields, errors): agree in chat or a short issue; update `lib/validations/faculty.ts` and types together if multiple screens depend on them.
+- **RBAC**: Jashan owns layout-level redirects; feature owners ensure destructive or admin-only actions stay behind the same permission rules as the APIs.
+- **README / demo**: rotate who records the walkthrough, or assign **Jashan** to keep submission docs aligned with the sections above.
 
 ---
 
@@ -129,13 +151,13 @@ This project uses **Prisma** with a **Neon PostgreSQL** database. The database c
 
 ### Prerequisites
 
-1. Ensure you have the Neon database URL in your `.env` file:
+1.  `.env` file:
 
    ```
    DATABASE_URL="postgresql://user:password@host/neondb?sslmode=require"
    ```
 
-2. Install dependencies (if not already done):
+2. Install dependencies :
    ```bash
    npm install
    ```
@@ -240,4 +262,4 @@ npm run lint
 
 ## Conclusion
 
-The **Faculty module backend** delivers a coherent **Phase 1** foundation: persisted faculty data, secured APIs, and portal operations that other modules and a future frontend can consume through the documented endpoints and response contract.
+The **Faculty module** delivers a **Phase 1** backend foundation (persisted data, secured APIs, portal operations) and a **Phase 2** frontend that consumes those endpoints through a consistent UI stack (Next.js App Router, shadcn/ui, SWR, Zod, Better Auth). The tables under **Team task distribution** record how **Deep, Nidhi, Kiran, Taslima, and Jashan** split backend versus frontend ownership.

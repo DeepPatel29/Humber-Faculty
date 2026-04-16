@@ -1,6 +1,9 @@
 import { AppRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { isMockAuthAllowed } from "@/lib/auth-helpers";
+import {
+	clearBetterAuthSessionCookies,
+	isMockAuthAllowed,
+} from "@/lib/auth-helpers";
 import { db } from "@/lib/db";
 
 const TEST_USERS: Record<string, { name: string; role: AppRole; password: string; skipFaculty?: boolean }> = {
@@ -10,24 +13,42 @@ const TEST_USERS: Record<string, { name: string; role: AppRole; password: string
 	"student@university.edu": { name: "Student User", role: AppRole.STUDENT, password: "password123", skipFaculty: true },
 };
 
+function mockLoginDisabledMessage(): string {
+	const base = "Mock login is disabled.";
+	if (process.env.NODE_ENV === "production") {
+		return `${base} It is not available in production.`;
+	}
+	const raw = process.env.ALLOW_MOCK_AUTH;
+	const state =
+		raw === undefined || raw === ""
+			? "ALLOW_MOCK_AUTH is missing or empty in the environment the server sees."
+			: `ALLOW_MOCK_AUTH is set but not enabled (current value is not true/1/yes).`;
+	return `${base} ${state} Add ALLOW_MOCK_AUTH=true to .env in the project root (same folder as package.json), save, stop the dev server (Ctrl+C), then run npm run dev again.`;
+}
+
 export async function POST(request: NextRequest) {
 	if (!isMockAuthAllowed()) {
 		return NextResponse.json(
-			{ success: false, data: null, error: { code: "FORBIDDEN", message: "Mock login is disabled" } },
+			{
+				success: false,
+				data: null,
+				error: { code: "FORBIDDEN", message: mockLoginDisabledMessage() },
+			},
 			{ status: 403 }
 		);
 	}
 
 	const body = (await request.json().catch(() => ({}))) as { email?: string; password?: string };
+	const email = body.email?.trim() ?? "";
 
-	if (!body.email || !body.password) {
+	if (!email || !body.password) {
 		return NextResponse.json(
 			{ success: false, data: null, error: { code: "BAD_REQUEST", message: "Email and password required" } },
 			{ status: 400 }
 		);
 	}
 
-	const testUser = TEST_USERS[body.email];
+	const testUser = TEST_USERS[email];
 
 	if (!testUser || testUser.password !== body.password) {
 		return NextResponse.json(
@@ -42,7 +63,7 @@ export async function POST(request: NextRequest) {
 	if (db) {
 		try {
 			let user = await db.user.findUnique({
-				where: { email: body.email },
+				where: { email },
 				include: { faculty: true },
 			});
 
@@ -56,7 +77,7 @@ export async function POST(request: NextRequest) {
 				if (testUser.skipFaculty) {
 					user = await db.user.create({
 						data: {
-							email: body.email,
+							email,
 							name: testUser.name,
 							role: testUser.role,
 							emailVerified: true,
@@ -73,7 +94,7 @@ export async function POST(request: NextRequest) {
 				} else {
 					user = await db.user.create({
 						data: {
-							email: body.email,
+							email,
 							name: testUser.name,
 							role: testUser.role,
 							emailVerified: true,
@@ -107,7 +128,7 @@ export async function POST(request: NextRequest) {
 	const userData = {
 		id: userId,
 		name: testUser.name,
-		email: body.email,
+		email,
 		role: testUser.role,
 		facultyId,
 	};
@@ -124,6 +145,8 @@ export async function POST(request: NextRequest) {
 		maxAge: 60 * 60 * 24 * 7,
 		sameSite: "lax",
 	});
+
+	clearBetterAuthSessionCookies(response);
 
 	return response;
 }

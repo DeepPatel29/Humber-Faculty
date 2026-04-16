@@ -29,7 +29,6 @@ export async function GET(request: NextRequest) {
 				faculty: {
 					include: {
 						user: true,
-						department: true,
 					},
 				},
 				timeline: {
@@ -56,7 +55,7 @@ export async function GET(request: NextRequest) {
 					name: r.faculty.user.name,
 					email: r.faculty.user.email,
 					designation: r.faculty.designation,
-					department: r.faculty.department?.name || "Unknown",
+					department: r.faculty.sharedDepartmentId || "Unknown",
 				},
 				timeline: r.timeline.map((t) => ({
 					id: t.id,

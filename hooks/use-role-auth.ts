@@ -8,6 +8,16 @@ import {
   ROLES,
 } from "@/lib/types/roles";
 
+function parseSessionRole(value: unknown): UserRole {
+  if (typeof value !== "string") return ROLES.STAFF;
+  const u = value.trim().toUpperCase();
+  if (u === ROLES.ADMIN) return ROLES.ADMIN;
+  if (u === ROLES.STUDENT) return ROLES.STUDENT;
+  if (u === ROLES.SCHEDULER) return ROLES.SCHEDULER;
+  if (u === ROLES.STAFF || u === "FACULTY") return ROLES.STAFF;
+  return ROLES.STAFF;
+}
+
 export interface AuthUser {
   id: string;
   name: string;
@@ -46,7 +56,7 @@ async function fetchSessionUser(): Promise<AuthUser | null> {
         id: data.user.id,
         name: data.user.name || "User",
         email: data.user.email || "",
-        role: (data.user.role as UserRole) || ROLES.STAFF,
+        role: parseSessionRole(data.user.role),
         image: data.user.image || undefined,
         facultyId: data.user.facultyId || undefined,
       };
@@ -56,7 +66,7 @@ async function fetchSessionUser(): Promise<AuthUser | null> {
         id: data.session.userId,
         name: data.user?.name || "User",
         email: data.user?.email || "",
-        role: (data.user?.role as UserRole) || ROLES.STAFF,
+        role: parseSessionRole(data.user?.role),
         image: data.user?.image || undefined,
       };
     }

@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { isMockAuthAllowed } from "@/lib/auth-helpers";
+import {
+  hasBetterAuthSessionCookie,
+  isMockAuthAllowed,
+} from "@/lib/auth-helpers";
 
 export async function GET(request: NextRequest) {
-  if (auth) {
+  // If Better Auth has a session cookie, resolve get-session from Better Auth first.
+  // Otherwise a stale faculty_session (e.g. after logging in as admin then as faculty via email/password)
+  // would incorrectly report ADMIN for everyone.
+  if (auth && hasBetterAuthSessionCookie(request)) {
     try {
       return await auth.handler(request);
     } catch {
@@ -20,6 +26,7 @@ export async function GET(request: NextRequest) {
           name?: string;
           email?: string;
           role?: string;
+          facultyId?: string;
         };
         return NextResponse.json({
           session: {
@@ -28,13 +35,25 @@ export async function GET(request: NextRequest) {
             expiresAt: new Date(Date.now() + 86400000).toISOString(),
           },
           user: {
-            ...userData,
+            id: userData.id,
+            name: userData.name ?? "User",
+            email: userData.email ?? "",
+            image: null,
             role: userData.role || "STAFF",
+            facultyId: userData.facultyId,
           },
         });
       } catch {
         return NextResponse.json({ session: null, user: null });
       }
+    }
+  }
+
+  if (auth) {
+    try {
+      return await auth.handler(request);
+    } catch {
+      /* fall through */
     }
   }
 
@@ -95,9 +114,12 @@ export async function POST(request: NextRequest) {
   if (url.pathname.includes("sign-in")) {
     let role = "STAFF";
     const emailStr = typeof body.email === "string" ? body.email : "";
-    if (emailStr.includes("admin")) role = "ADMIN";
-    else if (emailStr.includes("scheduler")) role = "SCHEDULER";
-    else if (emailStr.includes("student")) role = "STUDENT";
+    const lowerEmail = emailStr.toLowerCase();
+    const rawName = typeof body.name === "string" ? body.name.trim() : "";
+    const lowerName = rawName.toLowerCase();
+    if (lowerEmail.includes("admin")) role = "ADMIN";
+    else if (lowerEmail.includes("scheduler")) role = "SCHEDULER";
+    else if (lowerEmail.includes("student")) role = "STUDENT";
 
     const userId = generateUserIdFromEmail(emailStr || `user_${Date.now()}`);
 
@@ -108,10 +130,10 @@ export async function POST(request: NextRequest) {
       displayName = "Scheduler User";
     } else if (role === "STUDENT") {
       displayName = "Student User";
-    } else if (emailStr.includes("john.smith") || String(body.name).toLowerCase().includes("john smith")) {
+    } else if (lowerEmail.includes("john.smith") || lowerName.includes("john smith")) {
       displayName = "Dr. John Smith";
-    } else if (typeof body.name === "string" && body.name) {
-      displayName = body.name;
+    } else if (rawName) {
+      displayName = rawName;
     }
 
     const userData = {

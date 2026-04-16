@@ -5,7 +5,7 @@ import {
 	requireAuth,
 	requireFacultyPortalAccess,
 } from "@/lib/auth-helpers";
-import { db, ensureFacultyExists } from "@/lib/db";
+import { db, ensureFacultyExists, getSql } from "@/lib/db";
 import { internalErrorResponse, successResponse } from "@/lib/api-response";
 
 export async function GET(request: NextRequest) {
@@ -20,6 +20,24 @@ export async function GET(request: NextRequest) {
 		try {
 			const faculty = await ensureFacultyExists(user!.id, user!.name, user!.email);
 			if (faculty) {
+				const sqlClient = getSql();
+				const courseDepartments = (await sqlClient`
+					SELECT id::text AS id, name
+					FROM "course_schema"."departments"
+				`) as Array<{ id: string; name: string }>;
+				let facultyDepartments: Array<{ id: string; name: string }> = [];
+				try {
+					facultyDepartments = (await sqlClient`
+						SELECT id::text AS id, name
+						FROM "faculty_schema"."Department"
+					`) as Array<{ id: string; name: string }>;
+				} catch {
+					// Table name may vary across environments; keep best-effort lookup.
+				}
+				const departmentById = new Map<string, string>(
+					[...courseDepartments, ...facultyDepartments].map((d) => [d.id, d.name])
+				);
+
 				const colleagues = await db.faculty.findMany({
 					where: {
 						NOT: { id: faculty.id },
@@ -27,7 +45,6 @@ export async function GET(request: NextRequest) {
 					},
 					include: {
 						user: true,
-						department: true,
 					},
 				});
 
@@ -36,7 +53,9 @@ export async function GET(request: NextRequest) {
 					name: c.user.name,
 					email: c.user.email,
 					designation: c.designation,
-					department: c.department?.name || "Unknown",
+					department: c.sharedDepartmentId
+						? departmentById.get(c.sharedDepartmentId) || c.sharedDepartmentId
+						: "Unknown",
 					avatarUrl: c.user.image,
 				}));
 

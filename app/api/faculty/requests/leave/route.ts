@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 				effectiveDate: effective,
 				endDate: end,
 				targetFacultyId: null,
-				targetScheduleId: null,
+				schedulerEventId: null,
 				newDate: null,
 				newStartTime: null,
 				newEndTime: null,

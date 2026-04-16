@@ -148,6 +148,23 @@ export interface FacultyProfile {
   socialLinks: Record<string, string>;
 }
 
+export interface FacultyTeachingHistoryEntry {
+  id: string;
+  facultyId: string;
+  institutionName: string;
+  courseTitle: string;
+  subjectArea: string | null;
+  termLabel: string | null;
+  academicYear: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  studentCount: number | null;
+  notes: string | null;
+  isExternal: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface FacultyScheduleItem {
   id: string;
   facultyId: string;

@@ -6,6 +6,7 @@ import {
 } from "@/lib/auth-helpers";
 import { db, ensureFacultyExists } from "@/lib/db";
 import { activeFacultyScheduleWhere } from "@/lib/faculty-schedule-queries";
+import { resolveCourseMap } from "@/lib/course-lookup";
 import { internalErrorResponse, successResponse } from "@/lib/api-response";
 
 export async function GET(request: NextRequest) {
@@ -27,27 +28,28 @@ export async function GET(request: NextRequest) {
 			if (faculty) {
 				const schedules = await db.facultySchedule.findMany({
 					where: activeFacultyScheduleWhere(faculty.id),
-					include: { course: true, room: true },
+					include: { room: true },
 					orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
 					take: limit,
 				});
 
-				return successResponse(
-					schedules.map((s) => ({
-						id: s.id,
-						courseCode: s.course.code,
-						courseName: s.course.name,
-						dayOfWeek: s.dayOfWeek,
-						startTime: s.startTime,
-						endTime: s.endTime,
-						roomName: s.room.name,
-						building: s.room.building,
-						type: s.type,
-						section: s.section,
-						program: s.program,
-						semester: s.semester,
-					}))
-				);
+				const courseMap = await resolveCourseMap(schedules.map((s) => s.courseId));
+
+				const rows = schedules.map((s) => ({
+					id: s.id,
+					courseCode: (s.courseId && courseMap.get(s.courseId)?.code) || "",
+					courseName: (s.courseId && courseMap.get(s.courseId)?.name) || "Unknown",
+					dayOfWeek: s.dayOfWeek,
+					startTime: s.startTime,
+					endTime: s.endTime,
+					roomName: s.room?.name || "TBA",
+					building: s.room?.building || "",
+					type: s.type,
+					section: s.section,
+					program: s.program,
+					semester: s.semester,
+				}));
+				return successResponse(rows);
 			}
 		} catch (e) {
 			console.error("Upcoming timetable error:", e);

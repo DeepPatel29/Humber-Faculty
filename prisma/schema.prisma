@@ -10,7 +10,8 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["faculty_schema"]
+  // Faculty now reads shared academic master data from course_schema.
+  schemas  = ["faculty_schema", "course_schema"]
 }
 
 // ============================================================================
@@ -185,27 +186,63 @@ model Department {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  courses Course[]
+  // Kept only as a faculty-owned organizational unit for faculty records.
   faculty Faculty[]
 
   @@schema("faculty_schema")
 }
 
-model Course {
-  id           String    @id @default(uuid())
-  name         String
-  code         String    @unique
-  description  String?
-  credits      Int       @default(3)
-  departmentId String
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+/// Shared course-team source of truth (maps to course_schema.courses).
+/// This replaces duplicated course ownership in faculty_schema.
+/// Read-only mirror model: do not manage/migrate course_schema tables from this module.
+model SharedCourse {
+  id                Int      @id
+  name              String
+  code              String
+  description       String?
+  prerequisites     String[]
+  credits           Int
+  lectureHours      Int      @map("lecture_hours")
+  labHours          Int      @map("lab_hours")
+  status            String
+  programId         Int?     @map("program_id")
+  createdAt         DateTime @map("created_at")
+  updatedAt         DateTime @map("updated_at")
+  courseKind        String   @map("course_kind")
+  electiveGroupId   Int?     @map("elective_group_id")
+  programSemesterId Int?     @map("program_semester_id")
 
-  department Department        @relation(fields: [departmentId], references: [id])
-  schedules  FacultySchedule[]
+  program   SharedProgram?    @relation(fields: [programId], references: [id])
 
-  @@index([departmentId])
-  @@schema("faculty_schema")
+  @@index([programId])
+  @@map("courses")
+  @@schema("course_schema")
+}
+
+/// Shared course-team program master data (maps to course_schema.programs).
+/// Keep fields minimal/safe; expand via `prisma db pull` if schema evolves.
+model SharedProgram {
+  id   Int    @id
+  code String?
+  name String
+
+  courses SharedCourse[]
+
+  @@map("programs")
+  @@schema("course_schema")
+}
+
+/// Shared department master data from course team (course_schema.departments).
+/// Read-only mirror model; do not manage/migrate this table from Faculty module.
+model SharedDepartment {
+  id        Int      @id
+  name      String
+  code      String
+  createdAt DateTime @map("created_at")
+  updatedAt DateTime @map("updated_at")
+
+  @@map("departments")
+  @@schema("course_schema")
 }
 
 model Room {
@@ -308,6 +345,8 @@ model FacultyTeachingHistory {
 model FacultySchedule {
   id               String           @id @default(uuid())
   facultyId        String
+  // courseId is currently stored as text in faculty_schema, while shared course ids are Int in course_schema.
+  // Keep this scalar as String for now; map/convert in application logic until a future DB migration aligns types.
   courseId         String?
   roomId           String?
   termId           String?
@@ -327,9 +366,8 @@ model FacultySchedule {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
-  course  Course? @relation(fields: [courseId], references: [id])
-  room    Room?   @relation(fields: [roomId], references: [id])
+  faculty Faculty      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  room    Room?         @relation(fields: [roomId], references: [id])
 
   @@index([facultyId])
   @@index([facultyId, dayOfWeek])

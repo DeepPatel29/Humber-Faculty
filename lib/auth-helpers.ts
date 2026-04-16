@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "./auth";
 import { db } from "./db";
 import {
@@ -12,11 +12,29 @@ import {
   hasPermission,
   ROLES,
 } from "./types/roles";
-import type { NextResponse } from "next/server";
+/** Cookie names used by Better Auth for the session (see proxy.ts). */
+const BETTER_AUTH_SESSION_COOKIE_NAMES = [
+  "better-auth.session_token",
+  "__Secure-better-auth.session_token",
+] as const;
+
+export function hasBetterAuthSessionCookie(request: NextRequest): boolean {
+  return BETTER_AUTH_SESSION_COOKIE_NAMES.some(
+    (name) => Boolean(request.cookies.get(name)?.value)
+  );
+}
+
+/** Clear Better Auth session cookies (e.g. when switching to mock login). */
+export function clearBetterAuthSessionCookies(response: NextResponse): void {
+  for (const name of BETTER_AUTH_SESSION_COOKIE_NAMES) {
+    response.cookies.delete(name);
+  }
+}
 
 /** Mock cookie auth is opt-in only (local/dev). Production uses Better Auth only. */
 export function isMockAuthAllowed(): boolean {
-  return process.env.ALLOW_MOCK_AUTH === "true";
+  const raw = process.env.ALLOW_MOCK_AUTH?.trim().toLowerCase();
+  return raw === "true" || raw === "1" || raw === "yes";
 }
 
 export interface SessionUser {

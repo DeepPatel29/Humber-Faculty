@@ -226,12 +226,3 @@ npm run lint
 ### Future Improvements
 - [ ] Add ESLint config (flat config)
 - [ ] Performance optimization
-
----
-
-# Original Blueprint (Reference)
-
-Below is the original implementation blueprint for reference:
-
----
-

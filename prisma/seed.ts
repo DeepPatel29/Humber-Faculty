@@ -34,30 +34,23 @@ async function main() {
 	];
 
 	for (const c of courses) {
-		await prisma.course.upsert({
-			where: { code: c.code },
+		const codeNum = parseInt(c.code.replace(/\D/g, ""), 10) || 500 + courses.indexOf(c);
+		await prisma.sharedCourse.upsert({
+			where: { id: codeNum },
 			update: {},
-			create: c,
+			create: {
+				id: codeNum,
+				name: c.name,
+				code: c.code,
+				credits: c.credits,
+				status: "active",
+				courseKind: "core",
+				lectureHours: 3,
+				labHours: 0,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			},
 		});
-	}
-
-	let semester = await prisma.semester.findFirst();
-	if (!semester) {
-		semester = await prisma.semester.create({
-			data: { name: "Default academic period (seed)" },
-		});
-	}
-
-	const allCourses = await prisma.course.findMany();
-	for (const courseRow of allCourses) {
-		const existingTerm = await prisma.term.findFirst({
-			where: { courseId: courseRow.id, semesterId: semester.id },
-		});
-		if (!existingTerm) {
-			await prisma.term.create({
-				data: { courseId: courseRow.id, semesterId: semester.id },
-			});
-		}
 	}
 
 	const rooms = [

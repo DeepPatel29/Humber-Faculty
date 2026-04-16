@@ -5,6 +5,41 @@ import Link from "next/link";
 import { ArrowRight, Eye, EyeOff, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
+import { ROLES } from "@/lib/types/roles";
+
+function redirectAfterLogin(sessionUser: { role?: string | null }) {
+  const r =
+    typeof sessionUser.role === "string"
+      ? sessionUser.role.trim().toUpperCase()
+      : "";
+  if (r === ROLES.ADMIN) {
+    window.location.href = "/admin/dashboard";
+    return;
+  }
+  if (r === ROLES.SCHEDULER) {
+    window.location.href = "/scheduler/dashboard";
+    return;
+  }
+  window.location.href = "/faculty/dashboard";
+}
+
+/** Use server session (Better Auth + get-session rules) so redirects match who is actually signed in. */
+async function redirectUsingGetSession(): Promise<void> {
+  try {
+    const res = await fetch("/api/auth/get-session", { credentials: "include" });
+    const data = (await res.json().catch(() => null)) as {
+      user?: { role?: string | null } | null;
+    } | null;
+    const u = data?.user;
+    if (u) {
+      redirectAfterLogin({ role: u.role ?? undefined });
+      return;
+    }
+  } catch {
+    /* fall through */
+  }
+  window.location.href = "/faculty/dashboard";
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -15,7 +50,8 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email || !password) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -28,18 +64,19 @@ export default function LoginPage() {
       "scheduler@university.edu",
     ];
 
-    if (testEmails.includes(email) && password === "password123") {
+    if (testEmails.includes(trimmedEmail) && password === "password123") {
       try {
         const res = await fetch("/api/auth/mock-login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email: trimmedEmail, password }),
           credentials: "include",
         });
         const data = await res.json();
-        if (data.user) {
+        const sessionUser = data.data?.user ?? data.user;
+        if (sessionUser) {
           toast.success("Welcome back!");
-          window.location.href = "/faculty/dashboard";
+          redirectAfterLogin(sessionUser);
           return;
         }
         toast.error(data.error?.message || "Login failed");
@@ -54,7 +91,7 @@ export default function LoginPage() {
 
     try {
       const result = await authClient.signIn.email({
-        email,
+        email: trimmedEmail,
         password,
       });
 
@@ -65,19 +102,21 @@ export default function LoginPage() {
       }
 
       toast.success("Welcome back!");
-      window.location.href = "/faculty/dashboard";
+      await redirectUsingGetSession();
+      return;
     } catch {
       try {
         const res = await fetch("/api/auth/mock-login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email: trimmedEmail, password }),
           credentials: "include",
         });
         const data = await res.json();
-        if (data.user) {
+        const sessionUser = data.data?.user ?? data.user;
+        if (sessionUser) {
           toast.success("Welcome back!");
-          window.location.href = "/faculty/dashboard";
+          redirectAfterLogin(sessionUser);
           return;
         }
         toast.error(data.error?.message || "Invalid credentials");

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { hasBetterAuthSessionCookie } from "@/lib/auth-helpers";
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -18,9 +19,7 @@ export function proxy(request: NextRequest) {
   }
 
   const facultySession = request.cookies.get("faculty_session")?.value;
-  const betterAuthSession =
-    request.cookies.get("better-auth.session_token")?.value ||
-    request.cookies.get("__Secure-better-auth.session_token")?.value;
+  const betterAuthSession = hasBetterAuthSessionCookie(request);
 
   const sessionToken = facultySession || betterAuthSession;
 
@@ -53,22 +52,27 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/faculty/dashboard", request.url));
   }
 
-  let role = "STAFF";
-
+  let mockRole: string | null = null;
   if (facultySession) {
     try {
       const data = JSON.parse(facultySession) as { role?: string };
-      role = data.role || "STAFF";
+      mockRole = data.role || "STAFF";
     } catch {
-      /* ignore */
+      mockRole = "STAFF";
     }
   }
 
-  if (pathname.startsWith("/admin") && role !== "ADMIN") {
+  // Mock cookie carries role; Better Auth sessions do not — defer /admin and /scheduler checks to layouts + API.
+  if (pathname.startsWith("/admin") && mockRole !== null && mockRole !== "ADMIN") {
     return NextResponse.redirect(new URL("/unauthorized", request.url));
   }
 
-  if (pathname.startsWith("/scheduler") && role !== "SCHEDULER" && role !== "ADMIN") {
+  if (
+    pathname.startsWith("/scheduler") &&
+    mockRole !== null &&
+    mockRole !== "SCHEDULER" &&
+    mockRole !== "ADMIN"
+  ) {
     return NextResponse.redirect(new URL("/unauthorized", request.url));
   }
 
