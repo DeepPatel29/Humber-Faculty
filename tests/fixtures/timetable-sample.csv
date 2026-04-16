@@ -1,0 +1,11 @@
+day_of_week,start_time,end_time,course_code,course_name,room_number,building,type,section,program,semester,student_count
+MONDAY,09:00,10:30,CS201,Data Structures,CR-301,Engineering,LECTURE,A,BCS,1,30
+MONDAY,11:00,12:30,CS301,Database Systems,Lab-201,Engineering,LAB,A,BCS,2,25
+TUESDAY,09:00,10:30,CS201,Data Structures,CR-301,Engineering,LECTURE,A,BCS,1,30
+TUESDAY,14:00,15:30,CS401,Algorithms,LH-102,Engineering,TUTORIAL,A,BCS,2,28
+WEDNESDAY,09:00,10:30,CS501,Machine Learning,LH-101,Engineering,LECTURE,A,BCS,3,35
+WEDNESDAY,11:00,12:30,CS301,Database Systems,Lab-201,Engineering,LAB,A,BCS,2,25
+THURSDAY,09:00,10:30,CS201,Data Structures,CR-301,Engineering,LECTURE,A,BCS,1,30
+THURSDAY,14:00,15:30,CS401,Algorithms,LH-102,Engineering,TUTORIAL,B,BCS,2,28
+FRIDAY,10:00,11:30,CS501,Machine Learning,LH-101,Engineering,LECTURE,A,BCS,3,35
+FRIDAY,13:00,14:30,CS601,Deep Learning,Lab-201,Engineering,LAB,A,BCS,4,20

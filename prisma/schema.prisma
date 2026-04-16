@@ -1,0 +1,471 @@
+// ============================================================================
+// Prisma Schema for FacultyHub - Faculty Management Portal
+// Database: PostgreSQL (Neon) - faculty_schema
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // Faculty now reads shared academic master data from course_schema.
+  schemas  = ["faculty_schema", "course_schema"]
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum AppRole {
+  ADMIN
+  FACULTY
+  SCHEDULER
+  STAFF
+  STUDENT
+
+  @@schema("faculty_schema")
+}
+
+enum RequestType {
+  SWAP
+  RESCHEDULE
+  LEAVE
+
+  @@schema("faculty_schema")
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+
+  @@schema("faculty_schema")
+}
+
+enum NotificationType {
+  REQUEST_UPDATE
+  SCHEDULE_CHANGE
+  ANNOUNCEMENT
+  REMINDER
+  SYSTEM
+
+  @@schema("faculty_schema")
+}
+
+enum ScheduleItemType {
+  LECTURE
+  LAB
+  TUTORIAL
+  SEMINAR
+  OFFICE_HOURS
+
+  @@schema("faculty_schema")
+}
+
+enum PreferredSlot {
+  MORNING
+  AFTERNOON
+  EVENING
+  ANY
+
+  @@schema("faculty_schema")
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+
+  @@schema("faculty_schema")
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  PENDING
+  PLANNED
+  CANCELLED
+  COMPLETED
+
+  @@schema("faculty_schema")
+}
+
+enum FacultyStatus {
+  ACTIVE
+  ON_LEAVE
+  INACTIVE
+
+  @@schema("faculty_schema")
+}
+
+// ============================================================================
+// BETTER AUTH TABLES
+// ============================================================================
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  role          AppRole   @default(FACULTY)
+
+  sessions     Session[]
+  accounts     Account[]
+  faculty      Faculty?
+
+  @@schema("faculty_schema")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@schema("faculty_schema")
+}
+
+model Account {
+  id                  String    @id @default(cuid())
+  accountId           String
+  providerId          String
+  userId              String
+  accessToken         String?
+  refreshToken        String?
+  idToken             String?
+  accessTokenExpiresAt DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope               String?
+  password            String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@schema("faculty_schema")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@schema("faculty_schema")
+}
+
+// ============================================================================
+// APPLICATION TABLES
+// ============================================================================
+
+model Department {
+  id          String    @id @default(uuid())
+  name        String
+  code        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Kept only as a faculty-owned organizational unit for faculty records.
+  faculty Faculty[]
+
+  @@schema("faculty_schema")
+}
+
+/// Shared course-team source of truth (maps to course_schema.courses).
+/// This replaces duplicated course ownership in faculty_schema.
+/// Read-only mirror model: do not manage/migrate course_schema tables from this module.
+model SharedCourse {
+  id                Int      @id
+  name              String
+  code              String
+  description       String?
+  prerequisites     String[]
+  credits           Int
+  lectureHours      Int      @map("lecture_hours")
+  labHours          Int      @map("lab_hours")
+  status            String
+  programId         Int?     @map("program_id")
+  createdAt         DateTime @map("created_at")
+  updatedAt         DateTime @map("updated_at")
+  courseKind        String   @map("course_kind")
+  electiveGroupId   Int?     @map("elective_group_id")
+  programSemesterId Int?     @map("program_semester_id")
+
+  program   SharedProgram?    @relation(fields: [programId], references: [id])
+
+  @@index([programId])
+  @@map("courses")
+  @@schema("course_schema")
+}
+
+/// Shared course-team program master data (maps to course_schema.programs).
+/// Keep fields minimal/safe; expand via `prisma db pull` if schema evolves.
+model SharedProgram {
+  id   Int    @id
+  code String?
+  name String
+
+  courses SharedCourse[]
+
+  @@map("programs")
+  @@schema("course_schema")
+}
+
+/// Shared department master data from course team (course_schema.departments).
+/// Read-only mirror model; do not manage/migrate this table from Faculty module.
+model SharedDepartment {
+  id        Int      @id
+  name      String
+  code      String
+  createdAt DateTime @map("created_at")
+  updatedAt DateTime @map("updated_at")
+
+  @@map("departments")
+  @@schema("course_schema")
+}
+
+model Room {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  building  String
+  floor     Int      @default(1)
+  capacity  Int      @default(30)
+  type      String   @default("classroom")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  schedules FacultySchedule[]
+
+  @@schema("faculty_schema")
+}
+
+model Faculty {
+  id           String        @id @default(uuid())
+  userId       String        @unique
+  departmentId String
+  employeeId   String        @unique
+  designation  String
+  status       FacultyStatus @default(ACTIVE)
+  joiningDate  DateTime      @default(now())
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  user                 User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department           Department                @relation(fields: [departmentId], references: [id])
+  profile              FacultyProfile?
+  schedules            FacultySchedule[]
+  availability         FacultyAvailability?
+  requests             FacultyRequest[]
+  notifications        FacultyNotification[]
+  preferredSubjects    FacultyPreferredSubject[]
+  teachingHistory      FacultyTeachingHistory[]
+
+  @@index([departmentId])
+  @@index([status])
+  @@schema("faculty_schema")
+}
+
+model FacultyProfile {
+  id                String   @id @default(uuid())
+  facultyId         String   @unique
+  bio               String?
+  phone             String?
+  officeLocation    String?
+  officeHours       String?
+  researchInterests String[] @default([])
+  qualifications    String[] @default([])
+  publications      String[] @default([])
+  socialLinks       Json     @default("{}")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@schema("faculty_schema")
+}
+
+model FacultyPreferredSubject {
+  id          String   @id @default(uuid())
+  facultyId   String
+  subjectName String
+  createdAt   DateTime @default(now())
+
+  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@unique([facultyId, subjectName])
+  @@index([facultyId])
+  @@schema("faculty_schema")
+}
+
+model FacultyTeachingHistory {
+  id              String    @id @default(uuid())
+  facultyId       String
+  institutionName String
+  courseTitle     String
+  subjectArea     String?
+  termLabel       String?
+  academicYear    String?
+  startDate       DateTime?
+  endDate         DateTime?
+  studentCount    Int?
+  notes           String?
+  isExternal      Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@index([facultyId])
+  @@index([institutionName])
+  @@index([courseTitle])
+  @@schema("faculty_schema")
+}
+
+model FacultySchedule {
+  id               String           @id @default(uuid())
+  facultyId        String
+  // courseId is currently stored as text in faculty_schema, while shared course ids are Int in course_schema.
+  // Keep this scalar as String for now; map/convert in application logic until a future DB migration aligns types.
+  courseId         String?
+  roomId           String?
+  termId           String?
+  dayOfWeek        DayOfWeek
+  startTime        String
+  endTime          String
+  type             ScheduleItemType @default(LECTURE)
+  section          String?
+  program          String?
+  semester         Int?
+  academicYear     String           @default("2024-2025")
+  isActive         Boolean          @default(true)
+  assignmentStatus AssignmentStatus @default(ACTIVE)
+  studentCount     Int?
+  startDate        DateTime?
+  endDate          DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  faculty Faculty      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  room    Room?         @relation(fields: [roomId], references: [id])
+
+  @@index([facultyId])
+  @@index([facultyId, dayOfWeek])
+  @@index([facultyId, isActive])
+  @@index([termId])
+  @@index([assignmentStatus])
+  @@index([courseId])
+  @@index([roomId])
+  @@schema("faculty_schema")
+}
+
+model FacultyAvailability {
+  id               String        @id @default(uuid())
+  facultyId        String        @unique
+  preferredSlot    PreferredSlot @default(ANY)
+  customStartTime  String?
+  customEndTime    String?
+  unavailableStart String?
+  unavailableEnd   String?
+  notes            String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  faculty Faculty                @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  days    FacultyAvailabilityDay[]
+
+  @@schema("faculty_schema")
+}
+
+model FacultyAvailabilityDay {
+  id             String      @id @default(uuid())
+  availabilityId String
+  dayOfWeek      DayOfWeek
+  isAvailable    Boolean     @default(true)
+  startTime      String?
+  endTime        String?
+
+  availability FacultyAvailability @relation(fields: [availabilityId], references: [id], onDelete: Cascade)
+
+  @@unique([availabilityId, dayOfWeek])
+  @@index([availabilityId])
+  @@schema("faculty_schema")
+}
+
+model FacultyRequest {
+  id              String        @id @default(uuid())
+  facultyId       String
+  type            RequestType
+  status          RequestStatus @default(PENDING)
+  title           String
+  description     String?
+  requestDate     DateTime      @default(now())
+  effectiveDate   DateTime
+  endDate         DateTime?
+  targetFacultyId String?
+  targetScheduleId String?
+  newDate         DateTime?
+  newStartTime    String?
+  newEndTime      String?
+  reason          String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  faculty  Faculty                  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  timeline FacultyRequestTimeline[]
+
+  @@index([facultyId, status])
+  @@index([facultyId, createdAt(sort: Desc)])
+  @@schema("faculty_schema")
+}
+
+model FacultyRequestTimeline {
+  id        String        @id @default(cuid())
+  requestId String
+  status    RequestStatus
+  comment   String?
+  createdBy String
+  createdAt DateTime      @default(now())
+
+  request FacultyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@schema("faculty_schema")
+}
+
+model FacultyNotification {
+  id        String           @id @default(uuid())
+  facultyId String
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@index([facultyId, isRead])
+  @@index([facultyId, createdAt(sort: Desc)])
+  @@schema("faculty_schema")
+}
