@@ -12,10 +12,16 @@ A modern **faculty management portal** built with Next.js 16, React 19, TypeScri
 
 ## Project Overview
 
-The Faculty module is the backend slice of a **College Scheduling System**. It stores who faculty are (linked to authenticated users and departments), how they can be reached and what they teach, their **availability** preferences, their **class timetable** data, **scheduling-related requests** (swap, reschedule, leave), and **in-app notifications**.
+FacultyHub is the faculty module of a larger College Scheduling System.
+It provides a unified backend and API layer for managing faculty-related operations such as:
 
-It solves the problem of giving the college a **single, consistent API** for faculty records and faculty-facing operations, so other parts of the system—admin tools, scheduler views, and future student or reporting modules—can rely on the same data model and permission rules instead of duplicating logic.
+Faculty records and profiles
+Teaching schedules and timetables
+Availability preferences
+Leave, swap, and rescheduling requests
+Internal notifications
 
+The system ensures that all faculty data and scheduling logic is handled through a single consistent API layer, eliminating duplication across different modules (admin, scheduler, and future student systems).
 ## Features Completed So Far
 
 | Area                    | What exists in the codebase                                                                                                                                                                                                                                                                                                                                  |
@@ -35,12 +41,13 @@ It solves the problem of giving the college a **single, consistent API** for fac
 
 ## Tech Stack
 
-- **Runtime / framework:** Node.js, **Next.js 16** (App Router API routes)
-- **Language:** **TypeScript**
-- **ORM / DB:** **Prisma 6**, **PostgreSQL** via `DATABASE_URL` (schema and comments target **Neon**; `@neondatabase/serverless` is used for the optional `neon` SQL client)
-- **Auth:** **Better Auth** with Prisma adapter
-- **Validation:** **Zod**
-- **E2E (project-level):** **Playwright**
+- Frontend & Framework: Next.js 16, React 19
+Language: TypeScript
+Database: PostgreSQL (Neon)
+ORM: Prisma 6
+Authentication: Better Auth
+Validation: Zod
+Testing: Playwright
 
 ## Database Design
 
