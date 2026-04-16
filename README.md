@@ -6,7 +6,7 @@ A modern **faculty management portal** built with Next.js 16, React 19, TypeScri
 
 - Deep
 - Kiran
-- Taslima
+- Taslimabanu
 - Nidhi
 - Jashan
 
