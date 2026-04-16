@@ -7,21 +7,15 @@ A modern **faculty management portal** built with Next.js 16, React 19, TypeScri
 - Deep  
 - Nidhi  
 - Kiran  
-- Taslima  
+- Taslimabanu  
 - Jashan  
 
 ## Project Overview
 
-FacultyHub is the faculty module of a larger College Scheduling System.
-It provides a unified backend and API layer for managing faculty-related operations such as:
+The Faculty module is the backend slice of a **College Scheduling System**. It stores who faculty are (linked to authenticated users and departments), how they can be reached and what they teach, their **availability** preferences, their **class timetable** data, **scheduling-related requests** (swap, reschedule, leave), and **in-app notifications**.
 
-Faculty records and profiles
-Teaching schedules and timetables
-Availability preferences
-Leave, swap, and rescheduling requests
-Internal notifications
+It solves the problem of giving the college a **single, consistent API** for faculty records and faculty-facing operations, so other parts of the system—admin tools, scheduler views, and future student or reporting modules—can rely on the same data model and permission rules instead of duplicating logic.
 
-The system ensures that all faculty data and scheduling logic is handled through a single consistent API layer, eliminating duplication across different modules (admin, scheduler, and future student systems).
 ## Features Completed So Far
 
 | Area                    | What exists in the codebase                                                                                                                                                                                                                                                                                                                                  |
@@ -41,13 +35,15 @@ The system ensures that all faculty data and scheduling logic is handled through
 
 ## Tech Stack
 
-- Frontend & Framework: Next.js 16, React 19
-Language: TypeScript
-Database: PostgreSQL (Neon)
-ORM: Prisma 6
-Authentication: Better Auth
-Validation: Zod
-Testing: Playwright
+- **Runtime / framework:** Node.js, **Next.js 16** (App Router API routes)
+- **Language:** **TypeScript**
+- **UI:** **Tailwind CSS 4**, **shadcn/ui** (built on Radix UI primitives)
+- **ORM / DB:** **Prisma 6**, **PostgreSQL** via `DATABASE_URL` (schema and comments target **Neon**; `@neondatabase/serverless` is used for the optional `neon` SQL client)
+- **Auth:** **Better Auth** with Prisma adapter
+- **Data fetching:** **SWR**
+- **Validation:** **Zod**
+- **UI feedback:** **sonner**
+- **E2E (project-level):** **Playwright**
 
 ## Database Design
 
@@ -157,11 +153,18 @@ Work is split so each person owns **end-to-end UI** for an area (pages, componen
 This project uses **Prisma** with a **Neon PostgreSQL** database. The database connection is already configured in the `.env` file.
 
 ### Prerequisites
+1.  `.env` file (project root; same folder as `package.json`):
 
-1.  `.env` file:
+    - `DATABASE_URL` (required)
+    - `ALLOW_MOCK_AUTH` (optional; enables local mock login via `/api/auth/mock-login`)
+    - `NEXT_PUBLIC_APP_URL` (optional; used by auth-related redirects/origins)
+
+    Example:
 
    ```
    DATABASE_URL="postgresql://user:password@host/neondb?sslmode=require"
+   ALLOW_MOCK_AUTH=true
+   NEXT_PUBLIC_APP_URL="http://localhost:3000"
    ```
 
 2. Install dependencies :
@@ -218,6 +221,11 @@ npm run dev
 
 The app will be available at `http://localhost:3000`
 
+Optional (Turbopack):
+```bash
+npm run dev:turbo
+```
+
 ### Test Accounts
 
 You can use these test credentials to log in:
@@ -232,13 +240,16 @@ You can use these test credentials to log in:
 
 ```bash
 # Run Playwright tests
-npx playwright test
+npm run test
 
 # Run tests with UI
-npx playwright test --ui
+npm run test:ui
 
 # Run a specific test file
-npx playwright test tests/rbac.spec.ts
+npm run test -- tests/rbac.spec.ts
+
+# Debug tests (Playwright)
+npm run test:debug
 ```
 
 ### Building for Production
@@ -263,6 +274,11 @@ npm run typecheck
 ```bash
 # Run ESLint
 npm run lint
+```
+
+### Formatting
+```bash
+npm run format
 ```
 
 ---
