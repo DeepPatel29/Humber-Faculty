@@ -20,6 +20,16 @@ const WEEK_DAYS: DayOfWeek[] = [
 	DayOfWeek.SATURDAY,
 ];
 
+const DAY_INDEX: Record<DayOfWeek, number> = {
+	[DayOfWeek.SUNDAY]: 0,
+	[DayOfWeek.MONDAY]: 1,
+	[DayOfWeek.TUESDAY]: 2,
+	[DayOfWeek.WEDNESDAY]: 3,
+	[DayOfWeek.THURSDAY]: 4,
+	[DayOfWeek.FRIDAY]: 5,
+	[DayOfWeek.SATURDAY]: 6,
+};
+
 export async function GET(_request: NextRequest) {
 	const { user } = await getSessionUser(_request);
 	const authError = requireAuth(user);
@@ -30,21 +40,20 @@ export async function GET(_request: NextRequest) {
 
 	if (db) {
 		try {
-			const faculty = await ensureFacultyExists(user!.id, user!.name, user!.email);
+			const faculty =
+				(user!.facultyId
+					? await db.faculty.findUnique({
+							where: { id: user!.facultyId },
+							include: { profile: true, department: true },
+						})
+					: null) ?? (await ensureFacultyExists(user!.id, user!.name, user!.email));
 			if (faculty) {
 				const todayDay = WEEK_DAYS[new Date().getDay()];
 
-				const [todaySchedule, allSchedules, pendingRequests, notifications] = await Promise.all([
-					db.facultySchedule.findMany({
-						where: activeFacultyScheduleWhere(faculty.id, { dayOfWeek: todayDay }),
-						include: { room: true },
-						orderBy: { startTime: "asc" },
-					}),
+				const [allSchedules, pendingRequests, notifications] = await Promise.all([
 					db.facultySchedule.findMany({
 						where: activeFacultyScheduleWhere(faculty.id),
-						include: { room: true },
-						orderBy: { startTime: "asc" },
-						take: 6,
+						orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
 					}),
 					db.facultyRequest.count({
 						where: { facultyId: faculty.id, status: "PENDING" },
@@ -55,35 +64,112 @@ export async function GET(_request: NextRequest) {
 						take: 4,
 					}),
 				]);
+				const sql = (await import("@/lib/db")).getSql();
+				const assignmentRows = (await sql`
+					SELECT
+						a.id,
+						a.course_id,
+						c.name AS course_name,
+						c.code AS course_code,
+						a.day_of_week,
+						a.start_time,
+						a.end_time,
+						a.room_label,
+						a.class_type
+					FROM "faculty_schema"."faculty_course_assignments" a
+					LEFT JOIN "course_schema"."courses" c ON c.id = a.course_id
+					WHERE a.faculty_id = ${faculty.id}
+					  AND a.status = 'ACCEPTED'
+				`) as Array<{
+					id: string;
+					course_id: number | null;
+					course_name: string | null;
+					course_code: string | null;
+					day_of_week: string | null;
+					start_time: string | null;
+					end_time: string | null;
+					room_label: string | null;
+					class_type: string | null;
+				}>;
 
-				const allItems = [...todaySchedule, ...allSchedules];
-				const courseMap = await resolveCourseMap(allItems.map((s) => s.courseId));
-
-				const formatSchedule = (items: typeof allSchedules) =>
-					items.map((s) => ({
-						id: s.id,
-						facultyId: s.facultyId,
-						courseId: s.courseId,
-						roomId: s.roomId,
-						termId: s.termId,
-						courseName: (s.courseId && courseMap.get(s.courseId)?.name) || "Unknown",
-						courseCode: (s.courseId && courseMap.get(s.courseId)?.code) || "",
-						dayOfWeek: s.dayOfWeek,
-						startTime: s.startTime,
-						endTime: s.endTime,
-						roomName: s.room?.name || "TBA",
-						building: s.room?.building || "",
-						type: s.type,
-						section: s.section || "",
-						program: s.program || "",
-						semester: s.semester,
-						academicYear: s.academicYear,
-						isActive: s.isActive,
-						assignmentStatus: s.assignmentStatus,
-						studentCount: s.studentCount,
-						startDate: s.startDate?.toISOString() ?? null,
-						endDate: s.endDate?.toISOString() ?? null,
+				const scheduleItems = allSchedules.map((s) => ({
+					id: s.id,
+					facultyId: s.facultyId,
+					courseId: s.sharedCourseId ?? "",
+					roomId: s.facilityRoomId ?? "",
+					termId: s.schedulerTermId,
+					dayOfWeek: s.dayOfWeek,
+					startTime: s.startTime,
+					endTime: s.endTime,
+					type: s.type,
+					section: s.section || "",
+					program: s.program || "",
+					semester: s.semester,
+					academicYear: s.academicYear,
+					isActive: s.isActive,
+					assignmentStatus: s.assignmentStatus,
+					studentCount: s.studentCount,
+					startDate: s.startDate?.toISOString() ?? null,
+					endDate: s.endDate?.toISOString() ?? null,
+					roomName: s.facilityRoomId ? "Room assigned" : "TBA",
+					building: "",
+					courseName: "",
+					courseCode: "",
+				}));
+				const assignmentItems = assignmentRows
+					.filter((a) => a.day_of_week && a.start_time && a.end_time)
+					.map((a) => ({
+						id: `assignment-${a.id}`,
+						facultyId: faculty.id,
+						courseId: a.course_id ? String(a.course_id) : "",
+						roomId: "",
+						termId: null as string | null,
+						dayOfWeek: a.day_of_week as DayOfWeek,
+						startTime: a.start_time as string,
+						endTime: a.end_time as string,
+						type: (a.class_type || "LECTURE") as string,
+						section: "",
+						program: "",
+						semester: null as number | null,
+						academicYear: "",
+						isActive: true,
+						assignmentStatus: "ACTIVE",
+						studentCount: null as number | null,
+						startDate: null as string | null,
+						endDate: null as string | null,
+						roomName: a.room_label || "TBA",
+						building: "",
+						courseName: a.course_name || "No course linked",
+						courseCode: a.course_code || "",
 					}));
+				const existingSlotKeys = new Set(
+					scheduleItems.map((s) => `${s.dayOfWeek}|${s.startTime}|${s.endTime}`)
+				);
+				const mergedItems = [
+					...scheduleItems,
+					...assignmentItems.filter(
+						(a) => !existingSlotKeys.has(`${a.dayOfWeek}|${a.startTime}|${a.endTime}`)
+					),
+				];
+
+				const allItems = mergedItems;
+				const courseMap = await resolveCourseMap(
+					allSchedules
+						.map((s) => s.sharedCourseId)
+						.filter((id): id is string => Boolean(id))
+				);
+
+				const formatSchedule = (items: typeof mergedItems) =>
+					items.map((s) => ({
+						...s,
+						courseName:
+							s.courseName ||
+							(s.courseId && courseMap.get(s.courseId)?.name) ||
+							"No course linked",
+						courseCode:
+							s.courseCode || (s.courseId && courseMap.get(s.courseId)?.code) || "",
+					}));
+				const todaySchedule = mergedItems.filter((s) => s.dayOfWeek === todayDay);
 
 				return successResponse({
 					faculty: {
@@ -95,13 +181,13 @@ export async function GET(_request: NextRequest) {
 							avatarUrl: null,
 						},
 						department: {
-							name: faculty.department?.name || "General",
+							name: "General",
 						},
 					},
 					summaryCards: [
 						{
 							label: "Classes This Week",
-							value: allSchedules.length,
+							value: mergedItems.length,
 							change: 0,
 							changeLabel: "vs last week",
 							icon: "calendar",
@@ -128,7 +214,7 @@ export async function GET(_request: NextRequest) {
 						},
 					],
 					todaySchedule: formatSchedule(todaySchedule),
-					upcomingSchedule: formatSchedule(allSchedules.slice(0, 3)),
+					upcomingSchedule: formatSchedule(mergedItems.slice(0, 3)),
 					recentNotifications: notifications.map((n) => ({
 						id: n.id,
 						type: n.type,
@@ -138,6 +224,7 @@ export async function GET(_request: NextRequest) {
 						link: n.link,
 						createdAt: n.createdAt.toISOString(),
 					})),
+					classesThisWeek: mergedItems.length,
 					pendingRequests,
 				});
 			}
@@ -169,6 +256,7 @@ export async function GET(_request: NextRequest) {
 		todaySchedule: [],
 		upcomingSchedule: [],
 		recentNotifications: [],
+		classesThisWeek: 0,
 		pendingRequests: 0,
 	});
 }

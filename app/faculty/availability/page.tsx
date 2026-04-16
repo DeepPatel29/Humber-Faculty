@@ -81,9 +81,8 @@ export default function AvailabilityPage() {
   const handleUploadComplete = async () => {
     setShowUpload(false);
     await mutate();
-    toast.success(
-      "Availability updated. Administrators have been notified of your changes.",
-    );
+    window.dispatchEvent(new CustomEvent("facultyDataUpdated"));
+    toast.success("Availability updated successfully");
   };
 
   if (error) {

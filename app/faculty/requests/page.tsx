@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Plus, ArrowLeftRight, CalendarClock, CalendarOff } from "lucide-react";
+import { Plus, CalendarClock, CalendarOff } from "lucide-react";
 import { RequestsList } from "@/components/faculty/requests-list";
 import {
-  SwapRequestDialog,
   RescheduleRequestDialog,
   LeaveRequestDialog,
 } from "@/components/faculty/request-dialogs";
@@ -23,8 +22,6 @@ import {
 import {
   useRequests,
   useClassOptions,
-  useColleagueOptions,
-  useUnreadCount,
   useWithdrawRequest,
 } from "@/hooks/use-faculty";
 import { RequestStatus, type FacultyRequest } from "@/lib/types/faculty";
@@ -32,8 +29,14 @@ import { toast } from "sonner";
 
 interface CourseAssignment {
   id: string;
+  request_title?: string | null;
   course_code: string;
   course_name: string;
+  term_label?: string | null;
+  academic_year?: string | null;
+  semester?: number | null;
+  section?: string | null;
+  program?: string | null;
   day_of_week?: string | null;
   start_time?: string | null;
   end_time?: string | null;
@@ -65,7 +68,6 @@ function RequestsSkeleton() {
 }
 
 export default function RequestsPage() {
-  const [swapOpen, setSwapOpen] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -76,9 +78,7 @@ export default function RequestsPage() {
     "/api/faculty/course-assignments",
     (url: string) => fetch(url).then((r) => r.json()),
   );
-  const { data: classOptions = [] } = useClassOptions();
-  const { data: colleagueOptions = [] } = useColleagueOptions();
-  const { data: unreadCount = 0 } = useUnreadCount();
+  const { data: classOptions = [], mutate: mutateClassOptions } = useClassOptions();
   const { trigger: withdrawMutation } = useWithdrawRequest();
 
   const requests = requestsData?.data ?? [];
@@ -163,9 +163,19 @@ export default function RequestsPage() {
               <div className="mt-3 space-y-3">
                 {courseAssignments.map((assignment) => (
                   <div key={assignment.id} className="rounded-md border p-3">
+                    {assignment.request_title ? (
+                      <p className="text-xs font-medium text-primary">{assignment.request_title}</p>
+                    ) : null}
                     <p className="font-medium">
                       {assignment.course_code} - {assignment.course_name}
                     </p>
+                    {(assignment.term_label || assignment.academic_year) && (
+                      <p className="text-xs text-muted-foreground">
+                        {assignment.term_label || "Term"}{" "}
+                        {assignment.academic_year ? `• ${assignment.academic_year}` : ""}
+                        {assignment.semester ? ` • Semester ${assignment.semester}` : ""}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       Assigned: {new Date(assignment.assigned_at).toLocaleDateString()} | Status: {assignment.status}
                     </p>
@@ -176,6 +186,8 @@ export default function RequestsPage() {
                           ? `${assignment.start_time} - ${assignment.end_time}`
                           : ""}
                         {assignment.room_label ? ` • ${assignment.room_label}` : ""}
+                        {assignment.program ? ` • ${assignment.program}` : ""}
+                        {assignment.section ? ` • Section ${assignment.section}` : ""}
                       </p>
                     )}
                     {assignment.status === "PENDING" ? (
@@ -208,11 +220,12 @@ export default function RequestsPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => setSwapOpen(true)}>
-                <ArrowLeftRight className="mr-2 h-4 w-4" />
-                Class Swap
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setRescheduleOpen(true)}>
+              <DropdownMenuItem
+                onClick={async () => {
+                  await mutateClassOptions();
+                  setRescheduleOpen(true);
+                }}
+              >
                 <CalendarClock className="mr-2 h-4 w-4" />
                 Reschedule
               </DropdownMenuItem>
@@ -262,13 +275,6 @@ export default function RequestsPage() {
         </Tabs>
       </div>
 
-      <SwapRequestDialog
-        open={swapOpen}
-        onOpenChange={setSwapOpen}
-        myClasses={classOptions}
-        colleagues={colleagueOptions}
-        onSuccess={handleRequestSuccess}
-      />
       <RescheduleRequestDialog
         open={rescheduleOpen}
         onOpenChange={setRescheduleOpen}

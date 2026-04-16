@@ -53,7 +53,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Welcome, {user?.name?.split(" ")[0]}!</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome, {user?.name?.split(" ")[0]}!</h1>
         <p className="text-muted-foreground">
           Manage faculty, requests, and department operations
         </p>
@@ -61,10 +61,10 @@ export default function AdminDashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Link href="/admin/requests">
-        <Card className="cursor-pointer transition-colors hover:bg-muted/30">
+        <Card className="cursor-pointer border-border bg-card transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <FileText className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{isLoading ? "..." : pendingRequests}</div>
@@ -76,10 +76,10 @@ export default function AdminDashboardPage() {
         </Link>
 
         <Link href="/admin/faculty">
-        <Card className="cursor-pointer transition-colors hover:bg-muted/30">
+        <Card className="cursor-pointer border-border bg-card transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Faculty</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{isLoading ? "..." : totalFaculty}</div>
@@ -89,10 +89,10 @@ export default function AdminDashboardPage() {
         </Link>
 
         <Link href="/admin/departments">
-        <Card className="cursor-pointer transition-colors hover:bg-muted/30">
+        <Card className="cursor-pointer border-border bg-card transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Departments</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <Building2 className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{isLoading ? "..." : totalDepartments}</div>
@@ -102,7 +102,7 @@ export default function AdminDashboardPage() {
         </Link>
 
         <Link href="/admin/requests?filter=approved">
-        <Card className="cursor-pointer transition-colors hover:bg-muted/30">
+        <Card className="cursor-pointer border-border bg-card transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Approved This Week</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
@@ -116,7 +116,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        <Card className="border-border bg-card">
           <CardHeader>
             <CardTitle>Recent Requests</CardTitle>
           </CardHeader>
@@ -132,7 +132,7 @@ export default function AdminDashboardPage() {
             ) : (
               <div className="space-y-4">
                 {recentRequests.map((req) => (
-                  <div key={req.id} className="flex items-center justify-between">
+                  <div key={req.id} className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
                   <div>
                     <p className="text-sm font-medium">{formatRequestType(req.type)} Request</p>
                     <p className="text-xs text-muted-foreground">{req.facultyName}</p>
@@ -141,12 +141,12 @@ export default function AdminDashboardPage() {
                     </p>
                   </div>
                   <span
-                    className={`text-xs px-2 py-1 rounded-full ${
+                    className={`rounded-full px-2 py-1 text-xs font-medium ${
                       req.status === "PENDING"
-                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
                         : req.status === "APPROVED"
-                          ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                          : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                          : "bg-destructive/10 text-destructive"
                     }`}
                   >
                     {req.status.toLowerCase()}
@@ -158,25 +158,25 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-border bg-card">
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <Link href="/admin/requests">
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start border-border bg-background hover:bg-primary/5">
                 <Clock className="mr-2 h-4 w-4" />
                 Review Pending Requests
               </Button>
             </Link>
             <Link href="/admin/faculty">
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start border-border bg-background hover:bg-primary/5">
                 <Users className="mr-2 h-4 w-4" />
                 Manage Faculty
               </Button>
             </Link>
             <Link href="/admin/departments">
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start border-border bg-background hover:bg-primary/5">
                 <Building2 className="mr-2 h-4 w-4" />
                 Manage Departments
               </Button>

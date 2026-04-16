@@ -20,16 +20,24 @@ export async function GET(request: NextRequest) {
 	const q = parseQueryParams(new URL(request.url).searchParams, requestsQuerySchema);
 	if (!q.success) return q.response;
 
-	const { status } = q.data;
+	const { status, type } = q.data;
 
 	if (db) {
 		try {
-			const faculty = await ensureFacultyExists(user!.id, user!.name, user!.email);
+			const faculty =
+				(user!.facultyId
+					? await db.faculty.findUnique({
+							where: { id: user!.facultyId },
+							select: { id: true },
+						})
+					: null) ??
+				(await ensureFacultyExists(user!.id, user!.name, user!.email));
 			if (faculty) {
 				const requests = await db.facultyRequest.findMany({
 					where: {
 						facultyId: faculty.id,
 						...(status !== undefined ? { status: status as RequestStatus } : {}),
+						...(type !== undefined ? { type } : {}),
 					},
 					include: { timeline: { orderBy: { createdAt: "asc" } } },
 					orderBy: { createdAt: "desc" },
@@ -48,7 +56,7 @@ export async function GET(request: NextRequest) {
 						endDate: r.endDate?.toISOString() || null,
 						reason: r.reason,
 						targetFacultyId: r.targetFacultyId,
-						targetScheduleId: r.targetScheduleId,
+						targetScheduleId: r.schedulerEventId,
 						newDate: r.newDate?.toISOString() || null,
 						newStartTime: r.newStartTime,
 						newEndTime: r.newEndTime,

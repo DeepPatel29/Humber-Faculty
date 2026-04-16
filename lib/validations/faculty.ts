@@ -125,7 +125,7 @@ export const createSwapRequestSchema = z.object({
 export type CreateSwapRequestInput = z.infer<typeof createSwapRequestSchema>;
 
 export const createRescheduleRequestSchema = z.object({
-  scheduleId: uuidSchema,
+  scheduleId: z.string().min(1, "Please select a class to reschedule"),
   newDate: dateStringSchema,
   newStartTime: timeStringSchema,
   newEndTime: timeStringSchema,

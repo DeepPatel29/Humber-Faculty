@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller, type Resolver } from "react-hook-form";
 import { Loader2, Save, Clock, Calendar, BookOpen, Check } from "lucide-react";
@@ -124,6 +124,39 @@ export function AvailabilityForm({
     formState: { errors },
   } = form;
   const days = watch("days");
+
+  useEffect(() => {
+    if (!availability) return;
+
+    const latestAvailabilityDays = Array.isArray(availability.days)
+      ? availability.days
+      : [];
+
+    const latestDefaultDays = allDays.map((day) => {
+      const existingDay = latestAvailabilityDays.find((d) => d.dayOfWeek === day);
+      const isAvailable = existingDay?.isAvailable ?? true;
+      return {
+        dayOfWeek: day,
+        isAvailable,
+        startTime:
+          existingDay?.startTime ?? (isAvailable ? "09:00" : undefined),
+        endTime:
+          existingDay?.endTime ?? (isAvailable ? "17:00" : undefined),
+      };
+    });
+
+    form.reset({
+      preferredSlot: availability.preferredSlot ?? PreferredSlot.ANY,
+      customStartTime: availability.customStartTime ?? "",
+      customEndTime: availability.customEndTime ?? "",
+      unavailableStart: availability.unavailableStart ?? "",
+      unavailableEnd: availability.unavailableEnd ?? "",
+      notes: availability.notes ?? "",
+      days: latestDefaultDays,
+    });
+
+    setSelectedCourses(availability.eligibleCourseIds || []);
+  }, [availability, form]);
 
   const handleSubmit = async (data: UpdateAvailabilityInput) => {
     if (onSave) {

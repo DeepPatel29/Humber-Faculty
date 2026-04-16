@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import {
   BookOpen,
-  Users,
   FileText,
   Clock,
   ChevronRight,
@@ -11,8 +10,6 @@ import {
   Calendar,
   Building2,
   Mail,
-  TrendingUp,
-  TrendingDown,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +17,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   useDashboard,
   useProfile,
+  useRequests,
+  useTimetable,
   useUnreadCount,
   useMarkAllNotificationsAsRead,
 } from "@/hooks/use-faculty";
@@ -70,6 +69,8 @@ function safeDate(v: any): string {
 export default function DashboardPage() {
   const { data, isLoading, mutate } = useDashboard();
   const { data: profile, mutate: mutateProfile } = useProfile();
+  const { data: timetableRows } = useTimetable();
+  const { data: pendingRequestsData } = useRequests({ status: "PENDING" });
   const { data: unreadData } = useUnreadCount();
   const { trigger: markAllRead } = useMarkAllNotificationsAsRead();
 
@@ -87,8 +88,8 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[1, 2].map((i) => (
             <Skeleton key={i} className="h-32 rounded-xl" />
           ))}
         </div>
@@ -104,10 +105,24 @@ export default function DashboardPage() {
   const d = data || ({} as any);
   const p = profile || ({} as any);
 
-  const classesThisWeek = d.classesThisWeek ?? d.classes_this_week ?? 0;
-  const totalStudents = d.totalStudents ?? d.total_students ?? 0;
-  const pendingRequests = d.pendingRequests ?? d.pending_requests ?? 0;
-  const officeHoursVal = d.officeHours ?? d.office_hours ?? "N/A";
+  const classesFromTimetable = Array.isArray(timetableRows)
+    ? timetableRows.length
+    : null;
+  const pendingFromRequests =
+    pendingRequestsData?.meta?.total ??
+    (Array.isArray(pendingRequestsData?.data)
+      ? pendingRequestsData.data.length
+      : null);
+  const classesThisWeek =
+    classesFromTimetable ??
+    d.classesThisWeek ??
+    d.classes_this_week ??
+    null;
+  const pendingRequests =
+    pendingFromRequests ??
+    d.pendingRequests ??
+    d.pending_requests ??
+    null;
   const todaySchedule = Array.isArray(d.todaySchedule) ? d.todaySchedule : [];
   const upcomingClasses = Array.isArray(d.upcomingSchedule)
     ? d.upcomingSchedule
@@ -122,37 +137,31 @@ export default function DashboardPage() {
   const stats = [
     {
       label: "Classes This Week",
-      value: classesThisWeek,
+      value:
+        typeof classesThisWeek === "number" && classesThisWeek > 0
+          ? String(classesThisWeek)
+          : "No classes this week",
       icon: Calendar,
-      sub: "vs last week",
+      sub:
+        typeof classesThisWeek === "number" && classesThisWeek > 0
+          ? "Scheduled this week"
+          : "No scheduled classes found",
       iconBg: "bg-primary/10 dark:bg-primary/15",
       iconColor: "text-primary",
     },
     {
-      label: "Total Students",
-      value: totalStudents,
-      icon: Users,
-      sub: "this semester",
-      trend: "+12",
-      iconBg: "bg-green-50 dark:bg-green-950",
-      iconColor: "text-green-600 dark:text-green-400",
-    },
-    {
       label: "Pending Requests",
-      value: pendingRequests,
+      value:
+        typeof pendingRequests === "number" && pendingRequests > 0
+          ? String(pendingRequests)
+          : "No pending requests",
       icon: FileText,
-      sub: "vs last week",
-      trend: pendingRequests > 0 ? `-${pendingRequests}` : undefined,
+      sub:
+        typeof pendingRequests === "number" && pendingRequests > 0
+          ? "Awaiting review"
+          : "You're all caught up",
       iconBg: "bg-amber-50 dark:bg-amber-950",
       iconColor: "text-amber-600 dark:text-amber-400",
-    },
-    {
-      label: "Office Hours",
-      value: officeHoursVal,
-      icon: Clock,
-      sub: "this week",
-      iconBg: "bg-purple-50 dark:bg-purple-950",
-      iconColor: "text-purple-600 dark:text-purple-400",
     },
   ];
 
@@ -168,7 +177,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         {stats.map((stat) => (
           <Card
             key={stat.label}
@@ -180,24 +189,8 @@ export default function DashboardPage() {
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     {stat.label}
                   </p>
-                  <p className="mt-2 text-3xl font-bold">{stat.value}</p>
+                  <p className="mt-2 text-2xl font-bold sm:text-3xl">{stat.value}</p>
                   <div className="mt-1 flex items-center gap-1.5">
-                    {stat.trend && (
-                      <span
-                        className={`flex items-center text-xs font-medium ${
-                          stat.trend.startsWith("+")
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-500"
-                        }`}
-                      >
-                        {stat.trend.startsWith("+") ? (
-                          <TrendingUp className="h-3 w-3 mr-0.5" />
-                        ) : (
-                          <TrendingDown className="h-3 w-3 mr-0.5" />
-                        )}
-                        {stat.trend}
-                      </span>
-                    )}
                     <span className="text-xs text-muted-foreground">
                       {stat.sub}
                     </span>
@@ -482,7 +475,9 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                 <FileText className="h-3.5 w-3.5" /> Pending Requests
               </div>
-              <p className="font-semibold">{pendingRequests}</p>
+              <p className="font-semibold">
+                {typeof pendingRequests === "number" ? pendingRequests : "No pending requests"}
+              </p>
             </div>
           </div>
         </CardContent>

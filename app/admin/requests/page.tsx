@@ -85,9 +85,14 @@ export default function AdminRequestsPage() {
   const pendingRequests: AdminRequest[] = pendingData?.data?.requests || [];
   const approvedRequests: AdminRequest[] = approvedData?.data?.requests || [];
   const rejectedRequests: AdminRequest[] = rejectedData?.data?.requests || [];
-  const allRequests = [...pendingRequests, ...approvedRequests, ...rejectedRequests].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
+  const allRequests = Array.from(
+    new Map(
+      [...pendingRequests, ...approvedRequests, ...rejectedRequests].map((request) => [
+        request.id,
+        request,
+      ]),
+    ).values(),
+  ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const normalizedQuery = query.trim().toLowerCase();
   const filteredRequests = allRequests.filter((request) => {
     const matchesPrefilter = filter !== "approved" || request.status === "APPROVED";
@@ -264,6 +269,7 @@ export default function AdminRequestsPage() {
                     <TableHead>Type</TableHead>
                     <TableHead>Title</TableHead>
                     <TableHead>Faculty</TableHead>
+                    <TableHead>Reason</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Effective</TableHead>
@@ -283,6 +289,11 @@ export default function AdminRequestsPage() {
                       <TableCell>{request.type}</TableCell>
                       <TableCell className="font-medium">{request.title}</TableCell>
                       <TableCell>{request.faculty.name}</TableCell>
+                      <TableCell className="max-w-[280px]">
+                        <p className="line-clamp-2 text-sm text-muted-foreground">
+                          {request.reason || "No reason provided"}
+                        </p>
+                      </TableCell>
                       <TableCell>{request.status}</TableCell>
                       <TableCell>{new Date(request.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>{new Date(request.effectiveDate).toLocaleDateString()}</TableCell>
@@ -358,6 +369,18 @@ export default function AdminRequestsPage() {
                 : "Reject this request. Please provide a reason for rejection."}
             </DialogDescription>
           </DialogHeader>
+          {selectedRequest && (
+            <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+              <p className="font-medium text-foreground">{selectedRequest.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Type: {selectedRequest.type} · Faculty: {selectedRequest.faculty.name}
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">Submitted reason:</span>{" "}
+                {selectedRequest.reason || "No reason provided"}
+              </p>
+            </div>
+          )}
           <div className="py-4">
             <Textarea
               placeholder={actionType === "APPROVED" ? "Optional comment..." : "Reason for rejection..."}
