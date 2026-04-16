@@ -7,12 +7,14 @@ import {
 } from "@/lib/auth-helpers";
 import { db, ensureFacultyExists } from "@/lib/db";
 import {
+	badRequestResponse,
 	createdResponse,
 	internalErrorResponse,
 	notFoundResponse,
 	parseRequestBody,
 	serviceUnavailableResponse,
 } from "@/lib/api-response";
+import { activeFacultyScheduleWhere } from "@/lib/faculty-schedule-queries";
 import { createSwapRequestSchema } from "@/lib/validations/faculty";
 
 export async function POST(request: NextRequest) {
@@ -39,6 +41,33 @@ export async function POST(request: NextRequest) {
 			return notFoundResponse("Faculty record");
 		}
 
+		const [mySchedule, targetSchedule] = await Promise.all([
+			db.facultySchedule.findFirst({
+				where: activeFacultyScheduleWhere(faculty.id, { id: body.myScheduleId }),
+				select: { id: true, facultyId: true },
+			}),
+			db.facultySchedule.findFirst({
+				where: activeFacultyScheduleWhere(body.targetFacultyId, {
+					id: body.targetScheduleId,
+				}),
+				select: { id: true, facultyId: true },
+			}),
+		]);
+
+		if (!mySchedule) {
+			return badRequestResponse("Selected class is not available for your account");
+		}
+
+		if (!targetSchedule) {
+			return badRequestResponse(
+				"Selected colleague class is not available for the chosen colleague"
+			);
+		}
+
+		if (mySchedule.id === targetSchedule.id) {
+			return badRequestResponse("Cannot create a swap request with the same class");
+		}
+
 		const desc = `${body.reason} (myScheduleId: ${body.myScheduleId})`;
 
 		const newRequest = await db.facultyRequest.create({
@@ -52,7 +81,7 @@ export async function POST(request: NextRequest) {
 				effectiveDate: new Date(body.effectiveDate),
 				endDate: null,
 				targetFacultyId: body.targetFacultyId,
-				targetScheduleId: body.targetScheduleId,
+				schedulerEventId: body.targetScheduleId,
 				newDate: null,
 				newStartTime: null,
 				newEndTime: null,

@@ -1,0 +1,11 @@
+day_of_week,start_time,end_time,course_code,course_name,room_number,building,type,section,program,semester
+MONDAY,09:00,10:30,CS101,Introduction to Programming,A101,Building A,LECTURE,A,BCS,1
+MONDAY,11:00,12:30,CS102,Data Structures,A102,Building A,LAB,A,BCS,2
+TUESDAY,09:00,10:30,CS101,Introduction to Programming,A101,Building A,LECTURE,A,BCS,1
+TUESDAY,14:00,15:30,MATH201,Linear Algebra,B201,Building B,TUTORIAL,A,BCS,2
+WEDNESDAY,09:00,10:30,CS201,Algorithms,B101,Building B,LECTURE,A,BCS,3
+WEDNESDAY,11:00,12:30,CS102,Data Structures,A102,Building A,LAB,A,BCS,2
+THURSDAY,09:00,10:30,CS101,Introduction to Programming,A101,Building A,LECTURE,A,BCS,1
+THURSDAY,14:00,15:30,MATH201,Linear Algebra,B201,Building B,TUTORIAL,B,BCS,2
+FRIDAY,10:00,11:30,CS201,Algorithms,B101,Building B,LECTURE,A,BCS,3
+FRIDAY,13:00,14:30,CS301,Database Systems,C301,Building C,LAB,A,BCS,4

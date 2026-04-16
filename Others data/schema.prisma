@@ -1,0 +1,204 @@
+// Prisma 7 - uses prisma-client provider with required output
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ===============================
+// ENUMS
+// ===============================
+
+enum ProgramStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CourseStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum SemesterType {
+  FALL
+  WINTER
+  SUMMER
+}
+
+enum AuthRole {
+  ADMIN
+  STAFF
+}
+
+enum PermissionAction {
+  CREATE
+  DELETE
+}
+
+enum PermissionRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ===============================
+// MODELS
+// ===============================
+
+model Departments {
+  Id   Int    @id @default(autoincrement()) @map("id")
+  Name String @unique @map("name")
+  Code String @unique @map("code")
+
+  Programs Programs[] @relation("DepartmentPrograms")
+
+  CreatedAt DateTime @default(now()) @map("created_at")
+  UpdatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([Code], name: "departments_code_idx")
+  @@map("departments")
+}
+
+// --------------------------------
+
+model Programs {
+  Id            Int           @id @default(autoincrement()) @map("id")
+  Name          String        @map("name")
+  Code          String        @unique @map("code")
+  DurationYears Int           @map("duration_years")
+  Status        ProgramStatus @default(ACTIVE) @map("status")
+
+  DepartmentId Int         @map("department_id")
+  Department   Departments @relation("DepartmentPrograms", fields: [DepartmentId], references: [Id], onDelete: Restrict)
+
+  Courses Courses[] @relation("ProgramCourses")
+
+  CreatedAt DateTime @default(now()) @map("created_at")
+  UpdatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([Name, DepartmentId], name: "programs_name_department_id_key")
+  @@index([DepartmentId], name: "programs_department_id_idx")
+  @@map("programs")
+}
+
+// --------------------------------
+
+model Courses {
+  Id          Int     @id @default(autoincrement()) @map("id")
+  Name        String  @map("name")
+  Code        String  @unique @map("code")
+  Description String? @map("description")
+
+  Prerequisites String[] @map("prerequisites")
+
+  Credits      Int @map("credits")
+  LectureHours Int @map("lecture_hours")
+  LabHours     Int @map("lab_hours")
+
+  Status CourseStatus @default(ACTIVE) @map("status")
+
+  ProgramId Int      @map("program_id")
+  Program   Programs @relation("ProgramCourses", fields: [ProgramId], references: [Id], onDelete: Restrict)
+
+  Terms Terms[] @relation("CourseTerms")
+
+  CreatedAt DateTime @default(now()) @map("created_at")
+  UpdatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([ProgramId], name: "courses_program_id_idx")
+  @@index([Status], name: "courses_status_idx")
+  @@map("courses")
+}
+
+// --------------------------------
+
+model Semesters {
+  Id   Int          @id @default(autoincrement()) @map("id")
+  Year Int          @map("year")
+  Type SemesterType @map("type")
+
+  Terms Terms[] @relation("SemesterTerms")
+
+  CreatedAt DateTime @default(now()) @map("created_at")
+  UpdatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([Year, Type], name: "semesters_year_type_key")
+  @@index([Year], name: "semesters_year_idx")
+  @@map("semesters")
+}
+
+// --------------------------------
+// BRIDGE TABLE
+// --------------------------------
+
+model Terms {
+  Id Int @id @default(autoincrement()) @map("id")
+
+  SemesterId Int       @map("semester_id")
+  Semester   Semesters @relation("SemesterTerms", fields: [SemesterId], references: [Id], onDelete: Cascade)
+
+  CourseId Int     @map("course_id")
+  Course   Courses @relation("CourseTerms", fields: [CourseId], references: [Id], onDelete: Cascade)
+
+  CreatedAt DateTime @default(now()) @map("created_at")
+
+  @@unique([SemesterId, CourseId], name: "terms_semester_id_course_id_key")
+  @@index([SemesterId], name: "terms_semester_id_idx")
+  @@index([CourseId], name: "terms_course_id_idx")
+  @@map("terms")
+}
+
+model ProgramsUsers {
+  Id           Int      @id @default(autoincrement()) @map("id")
+  Name         String   @map("name")
+  Email        String   @unique @map("email")
+  PasswordHash String   @map("password_hash")
+  Role         AuthRole @default(STAFF) @map("role")
+  IsActive     Boolean  @default(true) @map("is_active")
+  CreatedAt    DateTime @default(now()) @map("created_at")
+  UpdatedAt    DateTime @updatedAt @map("updated_at")
+
+  Sessions           ProgramsSessions[]           @relation("UserSessions")
+  PermissionRequests ProgramsPermissionRequests[] @relation("RequesterRequests")
+  ReviewedRequests   ProgramsPermissionRequests[] @relation("ReviewerRequests")
+
+  @@index([Role], name: "programs_users_role_idx")
+  @@map("programs_users")
+}
+
+model ProgramsSessions {
+  Id        Int      @id @default(autoincrement()) @map("id")
+  TokenHash String   @unique @map("token_hash")
+  UserId    Int      @map("user_id")
+  User      ProgramsUsers @relation("UserSessions", fields: [UserId], references: [Id], onDelete: Cascade)
+  ExpiresAt DateTime @map("expires_at")
+  CreatedAt DateTime @default(now()) @map("created_at")
+
+  @@index([UserId], name: "programs_sessions_user_id_idx")
+  @@index([ExpiresAt], name: "programs_sessions_expires_at_idx")
+  @@map("programs_sessions")
+}
+
+model ProgramsPermissionRequests {
+  Id           Int                     @id @default(autoincrement()) @map("id")
+  RequesterId  Int                     @map("requester_id")
+  Requester    ProgramsUsers           @relation("RequesterRequests", fields: [RequesterId], references: [Id], onDelete: Cascade)
+  Module       String                  @map("module")
+  Action       PermissionAction        @map("action")
+  PayloadJson  String?                 @map("payload_json")
+  Status       PermissionRequestStatus @default(PENDING) @map("status")
+  ReviewedById Int?                    @map("reviewed_by_id")
+  ReviewedBy   ProgramsUsers?          @relation("ReviewerRequests", fields: [ReviewedById], references: [Id], onDelete: SetNull)
+  ReviewNote   String?                 @map("review_note")
+  CreatedAt    DateTime                @default(now()) @map("created_at")
+  UpdatedAt    DateTime                @updatedAt @map("updated_at")
+
+  @@index([RequesterId], name: "programs_permission_requests_requester_id_idx")
+  @@index([Status], name: "programs_permission_requests_status_idx")
+  @@index([Module], name: "programs_permission_requests_module_idx")
+  @@map("programs_permission_requests")
+}

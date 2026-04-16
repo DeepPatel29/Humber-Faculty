@@ -41,6 +41,7 @@ docs/
 AGENTS.md
 .github/workflows
 .planning/debug
+Others data
 
 # IDE & OS
 .DS_Store

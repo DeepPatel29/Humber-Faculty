@@ -15,9 +15,21 @@ import {
   Loader2,
   Shield,
   Eye,
+  ChevronDown,
+  Settings,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useRoleAuth } from "@/hooks/use-role-auth";
+import { useUnreadCount } from "@/hooks/use-faculty";
 import { ROLE_INFO } from "@/lib/types/roles";
 import { getInitials } from "@/lib/utils";
 
@@ -38,20 +50,7 @@ export default function FacultyLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { user, isLoading, role, isAdmin, isScheduler, logout } = useRoleAuth();
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    async function fetchUnread() {
-      try {
-        const res = await fetch("/api/faculty/notifications/unread-count");
-        if (res.ok) {
-          const data = await res.json();
-          setUnreadCount(data?.data?.count || 0);
-        }
-      } catch {}
-    }
-    fetchUnread();
-  }, []);
+  const { data: unreadCount = 0 } = useUnreadCount();
 
   useEffect(() => {
     if (isLoading || user) return;
@@ -80,8 +79,8 @@ export default function FacultyLayout({
     new Date().getHours() < 12
       ? "Good Morning"
       : new Date().getHours() < 17
-      ? "Good Afternoon"
-      : "Good Evening";
+        ? "Good Afternoon"
+        : "Good Evening";
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -118,8 +117,8 @@ export default function FacultyLayout({
                     isAdmin
                       ? "text-purple-500"
                       : isScheduler
-                      ? "text-green-500"
-                      : "text-primary"
+                        ? "text-green-500"
+                        : "text-primary"
                   }`}
                 >
                   {roleInfo.label}
@@ -178,17 +177,6 @@ export default function FacultyLayout({
             );
           })}
         </nav>
-
-        {/* Logout */}
-        <div className="border-t border-border p-4">
-          <button
-            onClick={logout}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-700 dark:hover:text-red-400 transition-colors"
-          >
-            <LogOut className="h-5 w-5" />
-            Sign Out
-          </button>
-        </div>
       </aside>
 
       {/* Main */}
@@ -207,7 +195,7 @@ export default function FacultyLayout({
               })}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <ThemeToggle />
             <Link
               href="/faculty/notifications"
@@ -220,9 +208,56 @@ export default function FacultyLayout({
                 </span>
               )}
             </Link>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary text-sm font-bold">
-              {getInitials(user?.name || "")}
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-2 px-2"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary text-sm font-bold">
+                    {getInitials(user?.name || "")}
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{user?.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {user?.email}
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/faculty/profile"
+                    className="flex items-center gap-2"
+                  >
+                    <User className="h-4 w-4" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/faculty/availability"
+                    className="flex items-center gap-2"
+                  >
+                    <Clock className="h-4 w-4" />
+                    Availability
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={logout}
+                  className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
         <main className="p-6">{children}</main>

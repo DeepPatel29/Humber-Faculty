@@ -1,8 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   BookOpen,
-  Users,
   FileText,
   Clock,
   ChevronRight,
@@ -10,19 +10,27 @@ import {
   Calendar,
   Building2,
   Mail,
-  TrendingUp,
-  TrendingDown,
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useDashboard, useProfile, useUnreadCount, useMarkAllNotificationsAsRead } from "@/hooks/use-faculty";
+import {
+  useDashboard,
+  useProfile,
+  useRequests,
+  useTimetable,
+  useUnreadCount,
+  useMarkAllNotificationsAsRead,
+} from "@/hooks/use-faculty";
 import { formatTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { toast } from "sonner";
 
-const typeVariant: Record<string, "info" | "success" | "warning" | "secondary"> = {
+const typeVariant: Record<
+  string,
+  "info" | "success" | "warning" | "secondary"
+> = {
   LECTURE: "info",
   LAB: "success",
   TUTORIAL: "warning",
@@ -59,16 +67,29 @@ function safeDate(v: any): string {
 }
 
 export default function DashboardPage() {
-  const { data, isLoading } = useDashboard();
-  const { data: profile } = useProfile();
+  const { data, isLoading, mutate } = useDashboard();
+  const { data: profile, mutate: mutateProfile } = useProfile();
+  const { data: timetableRows } = useTimetable();
+  const { data: pendingRequestsData } = useRequests({ status: "PENDING" });
   const { data: unreadData } = useUnreadCount();
   const { trigger: markAllRead } = useMarkAllNotificationsAsRead();
+
+  // Listen for data updates from other components (e.g., timetable upload)
+  useEffect(() => {
+    const handleDataUpdate = () => {
+      mutate();
+      mutateProfile();
+    };
+    window.addEventListener("facultyDataUpdated", handleDataUpdate);
+    return () =>
+      window.removeEventListener("facultyDataUpdated", handleDataUpdate);
+  }, [mutate, mutateProfile]);
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[1, 2].map((i) => (
             <Skeleton key={i} className="h-32 rounded-xl" />
           ))}
         </div>
@@ -83,54 +104,64 @@ export default function DashboardPage() {
 
   const d = data || ({} as any);
   const p = profile || ({} as any);
-  
-  const classesThisWeek = d.classesThisWeek ?? d.classes_this_week ?? 0;
-  const totalStudents = d.totalStudents ?? d.total_students ?? 0;
-  const pendingRequests = d.pendingRequests ?? d.pending_requests ?? 0;
-  const officeHoursVal = d.officeHours ?? d.office_hours ?? "N/A";
+
+  const classesFromTimetable = Array.isArray(timetableRows)
+    ? timetableRows.length
+    : null;
+  const pendingFromRequests =
+    pendingRequestsData?.meta?.total ??
+    (Array.isArray(pendingRequestsData?.data)
+      ? pendingRequestsData.data.length
+      : null);
+  const classesThisWeek =
+    classesFromTimetable ??
+    d.classesThisWeek ??
+    d.classes_this_week ??
+    null;
+  const pendingRequests =
+    pendingFromRequests ??
+    d.pendingRequests ??
+    d.pending_requests ??
+    null;
   const todaySchedule = Array.isArray(d.todaySchedule) ? d.todaySchedule : [];
   const upcomingClasses = Array.isArray(d.upcomingSchedule)
     ? d.upcomingSchedule
     : Array.isArray(d.upcomingClasses)
-    ? d.upcomingClasses
+      ? d.upcomingClasses
+      : [];
+  const recentNotifications = Array.isArray(d.recentNotifications)
+    ? d.recentNotifications
     : [];
-  const recentNotifications = Array.isArray(d.recentNotifications) ? d.recentNotifications : [];
   const unreadCount = (unreadData as any)?.count ?? 0;
 
   const stats = [
     {
       label: "Classes This Week",
-      value: classesThisWeek,
+      value:
+        typeof classesThisWeek === "number" && classesThisWeek > 0
+          ? String(classesThisWeek)
+          : "No classes this week",
       icon: Calendar,
-      sub: "vs last week",
+      sub:
+        typeof classesThisWeek === "number" && classesThisWeek > 0
+          ? "Scheduled this week"
+          : "No scheduled classes found",
       iconBg: "bg-primary/10 dark:bg-primary/15",
       iconColor: "text-primary",
     },
     {
-      label: "Total Students",
-      value: totalStudents,
-      icon: Users,
-      sub: "this semester",
-      trend: "+12",
-      iconBg: "bg-green-50 dark:bg-green-950",
-      iconColor: "text-green-600 dark:text-green-400",
-    },
-    {
       label: "Pending Requests",
-      value: pendingRequests,
+      value:
+        typeof pendingRequests === "number" && pendingRequests > 0
+          ? String(pendingRequests)
+          : "No pending requests",
       icon: FileText,
-      sub: "vs last week",
-      trend: pendingRequests > 0 ? `-${pendingRequests}` : undefined,
+      sub:
+        typeof pendingRequests === "number" && pendingRequests > 0
+          ? "Awaiting review"
+          : "You're all caught up",
       iconBg: "bg-amber-50 dark:bg-amber-950",
       iconColor: "text-amber-600 dark:text-amber-400",
-    },
-    {
-      label: "Office Hours",
-      value: officeHoursVal,
-      icon: Clock,
-      sub: "this week",
-      iconBg: "bg-purple-50 dark:bg-purple-950",
-      iconColor: "text-purple-600 dark:text-purple-400",
     },
   ];
 
@@ -140,12 +171,13 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-sm text-muted-foreground">
-          Welcome back, {p.name || (p.faculty as any)?.user?.name || "Dr. Faculty"}
+          Welcome back,{" "}
+          {p.name || (p.faculty as any)?.user?.name || "Dr. Faculty"}
         </p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         {stats.map((stat) => (
           <Card
             key={stat.label}
@@ -157,25 +189,11 @@ export default function DashboardPage() {
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     {stat.label}
                   </p>
-                  <p className="mt-2 text-3xl font-bold">{stat.value}</p>
+                  <p className="mt-2 text-2xl font-bold sm:text-3xl">{stat.value}</p>
                   <div className="mt-1 flex items-center gap-1.5">
-                    {stat.trend && (
-                      <span
-                        className={`flex items-center text-xs font-medium ${
-                          stat.trend.startsWith("+")
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-500"
-                        }`}
-                      >
-                        {stat.trend.startsWith("+") ? (
-                          <TrendingUp className="h-3 w-3 mr-0.5" />
-                        ) : (
-                          <TrendingDown className="h-3 w-3 mr-0.5" />
-                        )}
-                        {stat.trend}
-                      </span>
-                    )}
-                    <span className="text-xs text-muted-foreground">{stat.sub}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {stat.sub}
+                    </span>
                   </div>
                 </div>
                 <div
@@ -194,7 +212,9 @@ export default function DashboardPage() {
         {/* Today's Schedule */}
         <Card className="lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base font-semibold">Today&apos;s Schedule</CardTitle>
+            <CardTitle className="text-base font-semibold">
+              Today&apos;s Schedule
+            </CardTitle>
             <Link
               href="/faculty/timetable"
               className="text-xs text-primary hover:underline flex items-center gap-0.5"
@@ -204,15 +224,20 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {todaySchedule.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No classes today</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No classes today
+              </p>
             ) : (
               todaySchedule.slice(0, 4).map((item: any, idx: number) => {
                 if (!item) return null;
-                const name = item.course?.name || item.courseName || item.name || "Class";
-                const code = item.course?.code || item.courseCode || item.code || "";
+                const name =
+                  item.course?.name || item.courseName || item.name || "Class";
+                const code =
+                  item.course?.code || item.courseCode || item.code || "";
                 const start = item.startTime || "";
                 const end = item.endTime || "";
-                const room = item.room?.name || item.roomName || item.room || "TBA";
+                const room =
+                  item.room?.name || item.roomName || item.room || "TBA";
                 const bldg = item.room?.building || item.building || "";
                 const type = item.type || "LECTURE";
                 const section = item.section || "";
@@ -226,7 +251,10 @@ export default function DashboardPage() {
                   >
                     <div className="flex items-start justify-between">
                       <h4 className="text-sm font-semibold">{name}</h4>
-                      <Badge variant={typeVariant[type] || "secondary"} className="text-[10px]">
+                      <Badge
+                        variant={typeVariant[type] || "secondary"}
+                        className="text-[10px]"
+                      >
                         {type}
                       </Badge>
                     </div>
@@ -259,7 +287,9 @@ export default function DashboardPage() {
         {/* Upcoming Classes */}
         <Card className="lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base font-semibold">Upcoming Classes</CardTitle>
+            <CardTitle className="text-base font-semibold">
+              Upcoming Classes
+            </CardTitle>
             <Link
               href="/faculty/timetable"
               className="text-xs text-primary hover:underline flex items-center gap-0.5"
@@ -269,15 +299,20 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {upcomingClasses.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No upcoming classes</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No upcoming classes
+              </p>
             ) : (
               upcomingClasses.slice(0, 4).map((item: any, idx: number) => {
                 if (!item) return null;
-                const name = item.course?.name || item.courseName || item.name || "Class";
-                const code = item.course?.code || item.courseCode || item.code || "";
+                const name =
+                  item.course?.name || item.courseName || item.name || "Class";
+                const code =
+                  item.course?.code || item.courseCode || item.code || "";
                 const start = item.startTime || "";
                 const end = item.endTime || "";
-                const room = item.room?.name || item.roomName || item.room || "TBA";
+                const room =
+                  item.room?.name || item.roomName || item.room || "TBA";
                 const bldg = item.room?.building || item.building || "";
                 const type = item.type || "LECTURE";
                 const section = item.section || "";
@@ -291,7 +326,10 @@ export default function DashboardPage() {
                   >
                     <div className="flex items-start justify-between">
                       <h4 className="text-sm font-semibold">{name}</h4>
-                      <Badge variant={typeVariant[type] || "secondary"} className="text-[10px]">
+                      <Badge
+                        variant={typeVariant[type] || "secondary"}
+                        className="text-[10px]"
+                      >
                         {type}
                       </Badge>
                     </div>
@@ -325,9 +363,13 @@ export default function DashboardPage() {
         <Card className="lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div>
-              <CardTitle className="text-base font-semibold">Recent Notifications</CardTitle>
+              <CardTitle className="text-base font-semibold">
+                Recent Notifications
+              </CardTitle>
               {unreadCount > 0 && (
-                <p className="text-xs text-muted-foreground mt-0.5">{unreadCount} unread</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {unreadCount} unread
+                </p>
               )}
             </div>
             {unreadCount > 0 && (
@@ -346,7 +388,9 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {recentNotifications.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No notifications</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No notifications
+              </p>
             ) : (
               recentNotifications.slice(0, 4).map((notif: any, idx: number) => {
                 if (!notif) return null;
@@ -365,10 +409,14 @@ export default function DashboardPage() {
                     }`}
                   >
                     <div className="flex items-start gap-2">
-                      {!isRead && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
+                      {!isRead && (
+                        <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                      )}
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{title}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{message}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                          {message}
+                        </p>
                         {createdAt && (
                           <p className="text-[10px] text-muted-foreground mt-1">
                             {safeDate(createdAt)}
@@ -387,7 +435,9 @@ export default function DashboardPage() {
       {/* Quick Overview */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Quick Overview</CardTitle>
+          <CardTitle className="text-base font-semibold">
+            Quick Overview
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -396,7 +446,9 @@ export default function DashboardPage() {
                 <Building2 className="h-3.5 w-3.5" /> Department
               </div>
               <p className="font-semibold">
-                {p.department || (p.faculty as any)?.department?.name || "Computer Science"}
+                {p.department ||
+                  (p.faculty as any)?.department?.name ||
+                  "Computer Science"}
               </p>
             </div>
             <div className="rounded-lg border bg-card p-4">
@@ -404,7 +456,9 @@ export default function DashboardPage() {
                 <BookOpen className="h-3.5 w-3.5" /> Designation
               </div>
               <p className="font-semibold">
-                {p.designation || (p.faculty as any)?.designation || "Associate Professor"}
+                {p.designation ||
+                  (p.faculty as any)?.designation ||
+                  "Associate Professor"}
               </p>
             </div>
             <div className="rounded-lg border bg-card p-4">
@@ -412,14 +466,18 @@ export default function DashboardPage() {
                 <Mail className="h-3.5 w-3.5" /> Email
               </div>
               <p className="font-semibold text-sm truncate">
-                {p.email || (p.faculty as any)?.user?.email || "faculty@university.edu"}
+                {p.email ||
+                  (p.faculty as any)?.user?.email ||
+                  "faculty@university.edu"}
               </p>
             </div>
             <div className="rounded-lg border bg-card p-4">
               <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                 <FileText className="h-3.5 w-3.5" /> Pending Requests
               </div>
-              <p className="font-semibold">{pendingRequests}</p>
+              <p className="font-semibold">
+                {typeof pendingRequests === "number" ? pendingRequests : "No pending requests"}
+              </p>
             </div>
           </div>
         </CardContent>

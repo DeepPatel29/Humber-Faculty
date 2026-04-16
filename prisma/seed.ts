@@ -34,10 +34,22 @@ async function main() {
 	];
 
 	for (const c of courses) {
-		await prisma.course.upsert({
-			where: { code: c.code },
+		const codeNum = parseInt(c.code.replace(/\D/g, ""), 10) || 500 + courses.indexOf(c);
+		await prisma.sharedCourse.upsert({
+			where: { id: codeNum },
 			update: {},
-			create: c,
+			create: {
+				id: codeNum,
+				name: c.name,
+				code: c.code,
+				credits: c.credits,
+				status: "active",
+				courseKind: "core",
+				lectureHours: 3,
+				labHours: 0,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			},
 		});
 	}
 
